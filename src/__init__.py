@@ -1,0 +1,1 @@
+"""KittyChain source package."""

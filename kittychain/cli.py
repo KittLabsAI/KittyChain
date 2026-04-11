@@ -9,6 +9,8 @@ from pathlib import Path
 import queue
 import select
 import re
+import shutil
+import subprocess
 from types import SimpleNamespace
 import sys
 import threading
@@ -35,7 +37,8 @@ from prompt_toolkit.layout.containers import Float, FloatContainer, HSplit, Wind
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.menus import CompletionsMenu
-from prompt_toolkit.layout.processors import Processor, Transformation
+from prompt_toolkit.layout.processors import Processor, Transformation, explode_text_fragments
+from prompt_toolkit.mouse_events import MouseEventType
 from prompt_toolkit.styles import Style
 from prompt_toolkit.utils import get_cwidth
 from prompt_toolkit.widgets import TextArea
@@ -81,6 +84,26 @@ _INPUT_PROMPT_LABEL = ">"
 _AUTHOR_NAME = "Jimmy Ye"
 
 
+def _copy_text_to_system_clipboard(text: str) -> bool:
+    commands: list[list[str]] = []
+    if sys.platform == "darwin":
+        commands.append(["pbcopy"])
+    if shutil.which("wl-copy"):
+        commands.append(["wl-copy"])
+    if shutil.which("xclip"):
+        commands.append(["xclip", "-selection", "clipboard"])
+    if shutil.which("xsel"):
+        commands.append(["xsel", "--clipboard", "--input"])
+
+    for command in commands:
+        try:
+            subprocess.run(command, input=text, text=True, check=True)
+            return True
+        except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+            continue
+    return False
+
+
 def _default_history_path() -> str:
     history_path = Path(os.path.expanduser("~/.kittychain/.history"))
     legacy_path = Path(os.path.expanduser("~/.kittychain_history"))
@@ -124,6 +147,7 @@ _APP_STYLE = Style.from_dict(
         "history.markdown.code": "fg:#b6a58e",
         "history.markdown.fence": "fg:#8d98a5",
         "history.markdown.codeblock": "fg:#9ea7b2",
+        "selected": "fg:#111111 bg:#f2c94c",
         "input.rule": "fg:#6b7280",
         "startup.text": "fg:#6b7280",
         "startup.frame": "fg:#d68786",
@@ -148,12 +172,15 @@ class HistoryStyleProcessor(Processor):
         line_text = "".join(fragment[1] for fragment in transformation_input.fragments)
         if isinstance(metadata, dict) and metadata.get("label"):
             return Transformation(
-                [(_merge_prompt_toolkit_styles(line_text and transformation_input.fragments[0][0], base_style, "class:history.assistant.label"), line_text)]
+                _reapply_selection_styles(
+                    transformation_input.fragments,
+                    [(_merge_prompt_toolkit_styles(line_text and transformation_input.fragments[0][0], base_style, "class:history.assistant.label"), line_text)],
+                )
             )
         if isinstance(metadata, dict) and metadata.get("startup"):
-            return Transformation(_style_startup_line(line_text, base_style))
+            return Transformation(_reapply_selection_styles(transformation_input.fragments, _style_startup_line(line_text, base_style)))
         if isinstance(metadata, dict) and metadata.get("markdown"):
-            return Transformation(_style_history_markdown_line(line_text, metadata))
+            return Transformation(_reapply_selection_styles(transformation_input.fragments, _style_history_markdown_line(line_text, metadata)))
 
         fragments = []
         for fragment in transformation_input.fragments:
@@ -184,6 +211,22 @@ class SlashCommandCompleter(Completer):
                     display=command,
                     display_meta=_BUILTIN_COMMANDS.get(command, "Use this skill"),
                 )
+
+
+class HistoryBufferControl(BufferControl):
+    def __init__(self, *args, on_selection_complete=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._on_selection_complete = on_selection_complete
+
+    def mouse_handler(self, mouse_event):
+        result = super().mouse_handler(mouse_event)
+        if (
+            mouse_event.event_type == MouseEventType.MOUSE_UP
+            and self._on_selection_complete is not None
+            and self.buffer.selection_state is not None
+        ):
+            self._on_selection_complete()
+        return result
 
 
 def _parse_args():
@@ -506,7 +549,11 @@ def _show_help(io=None):
             "  /compact       Compress conversation context\n"
             "  /save          Save session to disk\n"
             "  /sessions      List saved sessions\n"
-            "  /quit          Exit KittyChain",
+            "  /quit          Exit KittyChain\n"
+            "\n"
+            "[bold]Shortcuts:[/bold]\n"
+            "  Ctrl-Y         Enter copy mode for history messages\n"
+            "  Esc            Interrupt the current run",
             title="KittyChain Help",
             border_style="dim",
         )
@@ -1184,7 +1231,7 @@ def _startup_right_box_lines(config: Config, total_width: int, target_height: in
         f"Interface: {config.interface}",
         f"Base: {config.base_url or 'default'}",
     ]
-    startup_hint = "Type /help for commands, press Esc to interrupt a run, /quit to exit."
+    startup_hint = "Type /help for commands, press Ctrl-Y to copy history, Esc to interrupt a run, /quit to exit."
     raw_content.extend(
         textwrap.wrap(
             startup_hint,
@@ -1286,6 +1333,24 @@ def _merge_prompt_toolkit_styles(*styles: str) -> str:
         merged.append(f"class:{','.join(class_names)}")
     merged.extend(inline_parts)
     return " ".join(merged)
+
+
+def _reapply_selection_styles(original_fragments, styled_fragments):
+    original_chars = explode_text_fragments(original_fragments)
+    styled_chars = explode_text_fragments(styled_fragments)
+    selected_indexes = {
+        index for index, fragment in enumerate(original_chars)
+        if "class:selected" in fragment[0].split()
+    }
+
+    if not selected_indexes:
+        return styled_fragments
+
+    for index, fragment in enumerate(styled_chars):
+        if index in selected_indexes:
+            style, text, *rest = fragment
+            styled_chars[index] = (_merge_prompt_toolkit_styles(style, "class:selected"), text, *rest)
+    return styled_chars
 
 
 def _style_inline_markdown(text: str, base_style: str, raw_text: str | None = None):
@@ -1619,13 +1684,15 @@ class _ReadlineInput:
 
         self._ui_thread: threading.Thread | None = None
         self._input_area_height = _INPUT_AREA_MIN_HEIGHT
+        self._history_copy_mode = False
 
         self.history_buffer = Buffer(read_only=True)
         self._history_line_metadata: list[dict[str, object]] = [{}]
         self.history_window = Window(
-            BufferControl(
+            HistoryBufferControl(
                 buffer=self.history_buffer,
                 input_processors=[HistoryStyleProcessor(lambda: self._history_line_metadata)],
+                on_selection_complete=self._handle_history_selection_complete_ui,
             ),
             wrap_lines=False,
             always_hide_cursor=True,
@@ -1638,6 +1705,7 @@ class _ReadlineInput:
             wrap_lines=True,
             completer=self.completer,
             history=self.history,
+            focus_on_click=True,
             complete_while_typing=True,
             accept_handler=self._on_accept,
         )
@@ -1871,8 +1939,26 @@ class _ReadlineInput:
         def _insert_newline(_event):
             self._insert_input_newline()
 
+        @key_bindings.add("c-y")
+        def _toggle_history_copy_mode(_event):
+            if self.application.layout.current_control == self.history_window.content:
+                self._copy_history_selection_to_clipboard_ui()
+                return
+            self._enter_history_copy_mode_ui()
+
+        @key_bindings.add("enter", filter=has_focus(self.history_window.content))
+        def _copy_history_selection(_event):
+            self._copy_history_selection_to_clipboard_ui()
+
+        @key_bindings.add("tab", filter=has_focus(self.history_window.content), eager=True)
+        def _leave_history_copy_mode(_event):
+            self._exit_history_copy_mode_ui()
+
         @key_bindings.add("escape")
         def _interrupt(_event):
+            if self.application.layout.current_control == self.history_window.content:
+                self._exit_history_copy_mode_ui()
+                return
             if self._active_cancel_event is not None and not self._active_cancel_event.is_set():
                 self._active_cancel_event.set()
                 self._print_ui("[yellow]Interrupt requested...[/yellow]")
@@ -1893,6 +1979,34 @@ class _ReadlineInput:
         self._prompt_label = _INPUT_PROMPT_LABEL
         self.input_area.prompt = self._input_prompt_fragments()
         self._update_input_area_height_ui()
+        self.application.invalidate()
+
+    def _enter_history_copy_mode_ui(self) -> None:
+        self._history_copy_mode = True
+        self.layout.focus(self.history_window.content)
+        self.application.invalidate()
+
+    def _exit_history_copy_mode_ui(self) -> None:
+        self._history_copy_mode = False
+        self.history_buffer.exit_selection()
+        self.layout.focus(self.input_area)
+        self.application.invalidate()
+
+    def _handle_history_selection_complete_ui(self) -> None:
+        if not self._history_copy_mode:
+            return
+        self._copy_history_selection_to_clipboard_ui()
+
+    def _copy_history_selection_to_clipboard_ui(self) -> None:
+        if self.history_buffer.selection_state is None:
+            self._exit_history_copy_mode_ui()
+            return
+
+        data = self.history_buffer.copy_selection()
+        self.application.clipboard.set_data(data)
+        _copy_text_to_system_clipboard(data.text)
+        self._history_copy_mode = False
+        self.layout.focus(self.input_area)
         self.application.invalidate()
 
     def _load_input_history(self) -> None:
@@ -1966,10 +2080,13 @@ class _ReadlineInput:
     def _render_footer_fragments(self):
         read_tokens, read_cache_tokens, write_tokens, write_cache_tokens = self.token_provider()
         width = self._footer_width()
+        center = f"Author: {_AUTHOR_NAME}"
+        if self._history_copy_mode:
+            center = "Copy mode: drag in history, Ctrl-Y/Enter copy, Tab/Esc cancel"
         text = _compose_footer_line(
             width=width,
             left=f"KittyChain v{__version__}",
-            center=f"Author: {_AUTHOR_NAME}",
+            center=center,
             right=f"input={read_tokens} (+{read_cache_tokens} cached) output={write_tokens} (+{write_cache_tokens} cached)",
         )
         return [("class:footer", text)]

@@ -42,9 +42,11 @@ Fetch content from a public URL, extract readable text, and summarize it
 against a prompt. Use this to inspect current web pages or text endpoints.
 # Important Notes
 - Always use this after calling other tools like address_malicious to verify their results by fetching relevant web pages.
-- url=https://www.oklink.com/ to look up addresses, transactions, token risk, and token metadata.
-- url=https://coinmarketcap.com/ to look up token prices and market data.
-- url=https://tokenvitals.com/ to look up token risk and metadata.
+- `https://www.oklink.com/` for addresses, transactions, and token information by token address.
+- `https://www.blockchain.com/explorer` use when oklink is unavailable.
+- `https://solscan.io/` for Solana addresses and transactions.
+- `https://coinmarketcap.com/` for market information.
+- `https://tokenvitals.com/` for token information by token name.
     """
     parameters = {
         "type": "object",

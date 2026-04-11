@@ -9,26 +9,29 @@ from pathlib import Path
 from requests import HTTPError
 from requests.exceptions import RetryError
 
-import src.config as src_config
-import src.tools.agent as agent_module
-import src.tools.address_identity as address_identity_module
-import src.tools.address_labels as address_labels_module
-import src.tools.ask_user as ask_user_module
-import src.tools.bash as bash_module
-import src.tools.brief as brief_module
-import src.tools.edit as edit_module
-import src.tools.glob as glob_module
-import src.tools.grep as grep_module
-import src.tools.read as read_module
-import src.tools.skill as skill_module
-import src.tools.token_info as token_info_module
-import src.tools.token_security as token_security_module
-import src.tools.todo_write as todo_write_module
-import src.tools.web_fetch as web_fetch_module
-import src.tools.web_search as web_search_module
-import src.tools.write as write_module
-from src.tools.address_balance import render_balance_text, summarize_tokens
-from src.tools.address_identity import (
+from kittychain.config import ApiConfig, Config
+import kittychain.tools.agent as agent_module
+import kittychain.tools.address_identity as address_identity_module
+import kittychain.tools.address_labels as address_labels_module
+import kittychain.tools.address_mallicious as address_mallicious_module
+import kittychain.tools.address_transfers as address_transfers_module
+import kittychain.tools.ask_user as ask_user_module
+import kittychain.tools.address_balance as address_balance_module
+import kittychain.tools.bash as bash_module
+import kittychain.tools.brief as brief_module
+import kittychain.tools.edit as edit_module
+import kittychain.tools.glob as glob_module
+import kittychain.tools.grep as grep_module
+import kittychain.tools.read as read_module
+import kittychain.tools.skill as skill_module
+import kittychain.tools.token_info as token_info_module
+import kittychain.tools.token_security as token_security_module
+import kittychain.tools.todo_write as todo_write_module
+import kittychain.tools.web_fetch as web_fetch_module
+import kittychain.tools.web_search as web_search_module
+import kittychain.tools.write as write_module
+from kittychain.tools.address_balance import render_balance_text, summarize_tokens
+from kittychain.tools.address_identity import (
     _run_sql_with_backoff,
     build_cex_address_sql,
     build_deposit_address_sql,
@@ -39,21 +42,21 @@ from src.tools.address_identity import (
     summarize_lookup_rows,
     summarize_lookup_results,
 )
-from src.tools.address_labels import (
+from kittychain.tools.address_labels import (
     AddressLabelsTool,
     fetch_address_labels,
     main as address_labels_main,
     summarize_label_results,
 )
-from src.tools.address_mallicious import render_security_text, summarize_security_result
-from src.tools.address_transfers import fetch_all_transfers, render_transfers_text, summarize_transfers
-from src.tools.token_info import TokenInfoTool, fetch_token_info, main as token_info_main
-from src.tools.token_security import TokenSecurityTool, main as token_security_main, summarize_token_security_result
+from kittychain.tools.address_mallicious import render_security_text, summarize_security_result
+from kittychain.tools.address_transfers import fetch_all_transfers, render_transfers_text, summarize_transfers
+from kittychain.tools.token_info import TokenInfoTool, fetch_token_info, main as token_info_main
+from kittychain.tools.token_security import TokenSecurityTool, main as token_security_main, summarize_token_security_result
 
 
 class ToolsTests(unittest.TestCase):
-    def test_config_module_exposes_chainbase_api_key(self):
-        self.assertTrue(hasattr(src_config, "CHAINBASE_API_KEY"))
+    def test_config_package_exposes_api_config(self):
+        self.assertEqual(Config.from_file("/tmp/does-not-exist.json").apis, ApiConfig())
 
     def test_normalize_address_lowercases_and_validates(self):
         self.assertEqual(
@@ -471,6 +474,28 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("end_timestamp", end_description)
         self.assertIn("90 days", end_description)
 
+    def test_tool_descriptions_include_investigation_guidance(self):
+        self.assertIn("oklink.com", web_fetch_module.WebFetchTool.description.lower())
+        self.assertIn("web_fetch", address_mallicious_module.AddressMalliciousTool.description)
+        self.assertIn("address_labels", address_mallicious_module.AddressMalliciousTool.description)
+        self.assertIn("address_balance", address_mallicious_module.AddressMalliciousTool.description)
+        self.assertIn("address_transfers", address_mallicious_module.AddressMalliciousTool.description)
+
+        self.assertIn("3-5", address_transfers_module.AddressTransfersTool.description)
+        self.assertIn("address_mallicious", address_transfers_module.AddressTransfersTool.description)
+
+        self.assertIn("比较慢", address_identity_module.AddressIdentityTool.description)
+        self.assertIn("CEX", address_identity_module.AddressIdentityTool.description)
+        self.assertIn("ask_user", address_identity_module.AddressIdentityTool.description)
+        self.assertIn("address_mallicious", address_identity_module.AddressIdentityTool.description)
+
+        self.assertIn("top holders", token_info_module.TokenInfoTool.description)
+        self.assertIn("address_mallicious", token_info_module.TokenInfoTool.description)
+
+        self.assertIn("progress updates", brief_module.BriefTool.description)
+
+        self.assertIn("fresh external sources", web_search_module.WebSearchTool.description)
+
     def test_token_info_main_returns_success_and_prints_output(self):
         original_load_api_key = token_info_module._load_api_key
         original_fetch = token_info_module.fetch_token_info
@@ -662,9 +687,20 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("Working on it", buffer.getvalue())
 
     def test_skill_main_loads_repository_skill(self):
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            exit_code = skill_module.main("using-superpowers")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            skill_root = Path(tmpdir) / "skills"
+            skill_dir = skill_root / "using-superpowers"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text("name: using-superpowers\ndescription: test skill\n")
+
+            original_roots = skill_module.SKILL_ROOTS
+            skill_module.SKILL_ROOTS = [skill_root]
+            try:
+                buffer = io.StringIO()
+                with redirect_stdout(buffer):
+                    exit_code = skill_module.main("using-superpowers")
+            finally:
+                skill_module.SKILL_ROOTS = original_roots
         self.assertEqual(exit_code, 0)
         self.assertIn('Skill "using-superpowers" selected.', buffer.getvalue())
 
@@ -796,17 +832,17 @@ class ToolsTests(unittest.TestCase):
 
     def test_new_tool_scripts_support_standalone_execution(self):
         script_paths = [
-            "src/tools/agent.py",
-            "src/tools/ask_user.py",
-            "src/tools/brief.py",
-            "src/tools/skill.py",
-            "src/tools/read.py",
-            "src/tools/write.py",
-            "src/tools/edit.py",
-            "src/tools/bash.py",
-            "src/tools/grep.py",
-            "src/tools/glob.py",
-            "src/tools/todo_write.py",
+            "kittychain/tools/agent.py",
+            "kittychain/tools/ask_user.py",
+            "kittychain/tools/brief.py",
+            "kittychain/tools/skill.py",
+            "kittychain/tools/read.py",
+            "kittychain/tools/write.py",
+            "kittychain/tools/edit.py",
+            "kittychain/tools/bash.py",
+            "kittychain/tools/grep.py",
+            "kittychain/tools/glob.py",
+            "kittychain/tools/todo_write.py",
         ]
 
         for relative_path in script_paths:
@@ -822,7 +858,7 @@ class ToolsTests(unittest.TestCase):
                 self.assertNotIn("Traceback", completed.stderr)
 
     def test_glob_and_grep_scripts_work_from_tools_directory(self):
-        tool_dir = Path(__file__).resolve().parent.parent / "src" / "tools"
+        tool_dir = Path(__file__).resolve().parent.parent / "kittychain" / "tools"
 
         for script_name in ("glob.py", "grep.py"):
             with self.subTest(script=script_name):

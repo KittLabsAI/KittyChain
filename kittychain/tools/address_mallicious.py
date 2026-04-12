@@ -132,11 +132,12 @@ def run_security_lookup(address: str, key: str, secret: str) -> dict[str, Any]:
 class AddressMalliciousTool(Tool):
     name = "address_mallicious"
     description = """
+**Support ALL CHAINS.** 
 Check whether an address has malicious or risky signals using GoPlus.
 Returns flags for various risk categories including phishing, malware, mixing, sanctions, and more.
 # Important Notes
-- After calling this tool, always use web_fetch, address_labels, address_balance, and address_transfers to verify the result.
-- Using web_fetch to look up the address on https://www.oklink.com/ can provide additional insights such as token risk, token metadata, and related addresses.
+- After calling this tool, always use web_browser, address_labels, address_balance, and address_transfers to verify the result.
+- Using web_browser to look up the address on https://www.oklink.com/ can provide additional insights such as token risk, token metadata, and related addresses.
     """
     parameters = {
         "type": "object",

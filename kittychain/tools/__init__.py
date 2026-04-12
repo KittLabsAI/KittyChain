@@ -11,6 +11,7 @@ from .address_balance import AddressBalanceTool
 from .address_identity import AddressIdentityTool
 from .address_labels import AddressLabelsTool
 from .address_mallicious import AddressMalliciousTool
+from .address_pattern import AddressPatternTool
 from .address_transfers import AddressTransfersTool
 from .bash import BashTool
 from .brief import BriefTool
@@ -22,7 +23,7 @@ from .skill import SkillTool
 from .token_info import TokenInfoTool
 from .token_security import TokenSecurityTool
 from .todo_write import TodoWriteTool
-from .web_fetch import WebFetchTool
+from .web_browser import WebBrowserTool
 from .web_search import WebSearchTool
 from .write import WriteTool
 
@@ -35,7 +36,7 @@ _TOOL_TYPES = [
     GrepTool,
     AgentTool,
     SkillTool,
-    WebFetchTool,
+    WebBrowserTool,
     WebSearchTool,
     TodoWriteTool,
     BriefTool,
@@ -44,6 +45,7 @@ _TOOL_TYPES = [
     AddressIdentityTool,
     AddressLabelsTool,
     AddressMalliciousTool,
+    AddressPatternTool,
     AddressTransfersTool,
     TokenInfoTool,
     TokenSecurityTool,
@@ -72,6 +74,7 @@ __all__ = [
     "AddressIdentityTool",
     "AddressLabelsTool",
     "AddressMalliciousTool",
+    "AddressPatternTool",
     "AddressTransfersTool",
     "BashTool",
     "BriefTool",
@@ -83,7 +86,7 @@ __all__ = [
     "TokenInfoTool",
     "TokenSecurityTool",
     "TodoWriteTool",
-    "WebFetchTool",
+    "WebBrowserTool",
     "WebSearchTool",
     "WriteTool",
     "ALL_TOOLS",

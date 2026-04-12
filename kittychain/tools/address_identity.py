@@ -299,7 +299,7 @@ Returns identity labels (ENS names), exchange ownership, and user deposit addres
 # Important Notes
 - Always use ask_user to confirm whether to run this tool and remind the user it may take longer.
 - This lookup can be 比较慢, especially for multiple addresses, and is useful for checking ENS and CEX attribution.
-- After calling this tool, use address_mallicious and web_fetch to look up the address on https://www.oklink.com/ to verify the result and gather more insights such as token risk, token metadata, and related addresses.
+- After calling this tool, use address_mallicious and web_browser to look up the address on https://www.oklink.com/ to verify the result and gather more insights such as token risk, token metadata, and related addresses.
     """
     parameters = {
         "type": "object",

@@ -1,4 +1,4 @@
-"""Aggregate counterparties and transferred asset values across default Alchemy networks."""
+"""Aggregate counterparties and transferred asset values across supported Alchemy networks."""
 
 import argparse
 import json
@@ -23,16 +23,16 @@ else:
     from ..config import Config
 
 RPC_API_TEMPLATE = "https://{network}.g.alchemy.com/v2/{api_key}"
-DEFAULT_NETWORKS = [
-    "eth-mainnet",
-    "arb-mainnet",
-    "base-mainnet",
-    "avax-mainnet",
-    "bnb-mainnet",
-    "blast-mainnet",
-    "zksync-mainnet",
-    "polygon-mainnet",
-]
+SUPPORTED_CHAINS = {
+    "Ethereum": "eth-mainnet",
+    "Arbitrum": "arb-mainnet",
+    "Base": "base-mainnet",
+    "Avalanche C-Chain": "avax-mainnet",
+    "BNB Chain": "bnb-mainnet",
+    "Blast": "blast-mainnet",
+    "zkSync Era": "zksync-mainnet",
+    "Polygon": "polygon-mainnet",
+}
 
 
 class AlchemyAPIError(RuntimeError):
@@ -48,6 +48,23 @@ def _load_api_key() -> str:
 
 def _build_ssl_context() -> ssl.SSLContext:
     return ssl.create_default_context(cafile=certifi.where())
+
+
+def resolve_supported_networks(networks: list[str]) -> list[str]:
+    if not networks:
+        raise ValueError("networks is required")
+    resolved = []
+    invalid = []
+    for chain_name in networks:
+        network = SUPPORTED_CHAINS.get(chain_name)
+        if network is None:
+            invalid.append(chain_name)
+            continue
+        resolved.append(network)
+    if invalid:
+        supported = ", ".join(SUPPORTED_CHAINS)
+        raise ValueError(f"Unsupported networks: {', '.join(invalid)}. Supported chains: {supported}")
+    return resolved
 
 
 def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -169,7 +186,9 @@ def render_transfers_text(summary: dict[str, Any]) -> str:
 class AddressTransfersTool(Tool):
     name = "address_transfers"
     description = """
-Aggregate counterparties and transferred asset values across default Alchemy networks.
+Aggregate counterparties and transferred asset values across supported Alchemy networks.
+Before calling this tool, call address_pattern first to determine candidate chain names.
+Pass those candidate chain names through the required networks field.
 Returns aggregated transfer data grouped by network, direction, counterparty, and asset.
 # Important Notes
 - After calling this tool, inspect the 3-5 most frequent counterparties and check each one with address_mallicious.
@@ -181,33 +200,44 @@ Returns aggregated transfer data grouped by network, direction, counterparty, an
                 "type": "string",
                 "description": "The wallet address to inspect.",
             },
+            "networks": {
+                "type": "array",
+                "items": {"type": "string", "enum": list(SUPPORTED_CHAINS)},
+                "description": "Required candidate chain names. Supported values: " + ", ".join(SUPPORTED_CHAINS),
+            },
         },
-        "required": ["address"],
+        "required": ["address", "networks"],
     }
 
     _parent_agent = None
 
-    def execute(self, address: str) -> str:
+    def execute(self, address: str, networks: list[str]) -> str:
         if not address:
             raise ValueError("address is required")
+        resolved_networks = resolve_supported_networks(networks)
         api_key = _load_api_key()
         if not api_key:
             raise ValueError("ALCHEMY_API_KEY is required")
-        responses, skipped_networks = fetch_all_transfers(address, api_key, DEFAULT_NETWORKS)
+        responses, skipped_networks = fetch_all_transfers(address, api_key, resolved_networks)
         summary = summarize_transfers(address, responses)
         summary["skipped_networks"] = skipped_networks
         return render_transfers_text(summary)
 
 
-def main(address: str) -> int:
+def main(address: str, networks: list[str]) -> int:
     if not address:
         print("Error: address is required")
+        return 1
+    try:
+        resolved_networks = resolve_supported_networks(networks)
+    except ValueError as exc:
+        print(f"Error: {exc}")
         return 1
     api_key = _load_api_key()
     if not api_key:
         print("Error: ALCHEMY_API_KEY is required")
         return 1
-    responses, skipped_networks = fetch_all_transfers(address, api_key, DEFAULT_NETWORKS)
+    responses, skipped_networks = fetch_all_transfers(address, api_key, resolved_networks)
     summary = summarize_transfers(address, responses)
     summary["skipped_networks"] = skipped_networks
     print(render_transfers_text(summary))
@@ -216,4 +246,4 @@ def main(address: str) -> int:
 
 if __name__ == "__main__":
     address = "0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB"
-    raise SystemExit(main(address))
+    raise SystemExit(main(address, ["Ethereum", "Base", "BNB Chain"]))

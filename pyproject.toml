@@ -4,15 +4,21 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kittychain"
-version = "0.1.0"
-description = "KittyChain terminal agent"
+version = "0.1.2"
+description = "Terminal agent for onchain analysis"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10"
+authors = [
+    { name = "Jimmy Ye", email = "jiming_ye@163.com" },
+]
+keywords = ["web3", "agent", "crypto", "blockchain", "ai"]
 dependencies = [
     "anthropic>=0.84.0",
     "beautifulsoup4>=4.12",
     "certifi>=2024.0.0",
     "dune-client>=1.10.0",
-    "goplus-sdk>=1.0.0",
+    "goplus>=0.2.5",
     "openai>=1.0",
     "prompt_toolkit>=3.0",
     "requests>=2.31",
@@ -27,3 +33,6 @@ kittychain = "kittychain.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["kittychain"]
+
+[project.urls]
+Homepage = "https://github.com/yejiming"

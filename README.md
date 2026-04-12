@@ -30,7 +30,7 @@ kittychain
 
 - Lightweight terminal agent loop with an interactive REPL and one-shot prompt mode.
 - Support for OpenAI-compatible and Anthropic-compatible model interfaces.
-- Built-in local tools for shell execution, file reading and editing, web search, web fetch, TODO tracking, and skill loading.
+- Built-in local tools for shell execution, file reading and editing, web search, web browser fetching, TODO tracking, and skill loading.
 - Slash-command driven workflow for switching models, saving sessions, compacting context, and browsing loaded skills.
 - Session persistence and interruption support for longer investigative workflows.
 

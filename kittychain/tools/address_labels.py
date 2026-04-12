@@ -25,12 +25,11 @@ CHAINBASE_LABELS_URL = "https://api.chainbase.online/v1/address/labels"
 SUPPORTED_CHAINS = {
     "Ethereum": 1,
     "Polygon": 137,
-    "BSC": 56,
-    "Arbitrum One": 42161,
+    "BNB Chain": 56,
+    "Arbitrum": 42161,
     "Optimism": 10,
-    "Base": 8453
+    "Base": 8453,
 }
-SUPPORTED_CHAIN_IDS = list(SUPPORTED_CHAINS.values())
 RATE_LIMIT_PER_SECOND = 3
 RATE_LIMIT_WINDOW_SECONDS = 1.0
 MIN_REQUEST_INTERVAL_SECONDS = RATE_LIMIT_WINDOW_SECONDS / RATE_LIMIT_PER_SECOND
@@ -45,6 +44,23 @@ def _load_api_key() -> str:
     if key:
         return key
     return os.environ.get("CHAINBASE_API_KEY", "")
+
+
+def resolve_supported_chain_ids(networks: list[str]) -> list[int]:
+    if not networks:
+        raise ValueError("networks is required")
+    chain_ids = []
+    invalid = []
+    for chain_name in networks:
+        chain_id = SUPPORTED_CHAINS.get(chain_name)
+        if chain_id is None:
+            invalid.append(chain_name)
+            continue
+        chain_ids.append(chain_id)
+    if invalid:
+        supported = ", ".join(SUPPORTED_CHAINS)
+        raise ValueError(f"Unsupported networks: {', '.join(invalid)}. Supported chains: {supported}")
+    return chain_ids
 
 
 def _fetch_labels_for_chain(
@@ -124,17 +140,19 @@ def summarize_label_results(
 def fetch_address_labels(
     addresses: str | list[str] | tuple[str, ...],
     api_key: str,
+    networks: list[str],
     session: Any | None = None,
     timeout: int = 20,
     time_func=time.time,
     sleep_func=time.sleep,
 ) -> dict[str, Any] | list[dict[str, Any]]:
     normalized_addresses = parse_addresses(addresses)
+    chain_ids = resolve_supported_chain_ids(networks)
     session = session or requests.Session()
     payloads = []
     last_request_started_at: float | None = None
     for address in normalized_addresses:
-        for chain_id in SUPPORTED_CHAIN_IDS:
+        for chain_id in chain_ids:
             if last_request_started_at is not None:
                 now = time_func()
                 sleep_seconds = MIN_REQUEST_INTERVAL_SECONDS - (now - last_request_started_at)
@@ -175,7 +193,9 @@ class AddressLabelsTool(Tool):
     name = "address_labels"
     description = """
 Look up Chainbase address labels for one or more EVM addresses.
-Returns label category and tags aggregated across supported chains.
+Before calling this tool, call address_pattern first to determine candidate chain names.
+Pass those candidate chain names through the required networks field.
+Returns label category and tags aggregated across the selected supported chains.
     """
     parameters = {
         "type": "object",
@@ -184,23 +204,28 @@ Returns label category and tags aggregated across supported chains.
                 "type": "string",
                 "description": "One or more EVM addresses, separated by commas or whitespace.",
             },
+            "networks": {
+                "type": "array",
+                "items": {"type": "string", "enum": list(SUPPORTED_CHAINS)},
+                "description": "Required candidate chain names. Supported values: " + ", ".join(SUPPORTED_CHAINS),
+            },
         },
-        "required": ["address"],
+        "required": ["address", "networks"],
     }
 
     _parent_agent = None
 
-    def execute(self, address: str) -> str:
+    def execute(self, address: str, networks: list[str]) -> str:
         if not address:
             raise ValueError("address is required")
         api_key = _load_api_key()
         if not api_key:
             raise ValueError("CHAINBASE_API_KEY is required")
-        summary = fetch_address_labels(address, api_key)
+        summary = fetch_address_labels(address, api_key, networks)
         return render_text(summary)
 
 
-def main(address: str) -> int:
+def main(address: str, networks: list[str]) -> int:
     if not address:
         print("Error: address is required")
         return 1
@@ -208,11 +233,15 @@ def main(address: str) -> int:
     if not api_key:
         print("Error: CHAINBASE_API_KEY is required")
         return 1
-    summary = fetch_address_labels(address, api_key)
+    try:
+        summary = fetch_address_labels(address, api_key, networks)
+    except ValueError as exc:
+        print(f"Error: {exc}")
+        return 1
     print(render_text(summary))
     return 0
 
 
 if __name__ == "__main__":
     address = ["0x28c6c06298d514db089934071355e5743bf21d60", "0x28c71c57f806fb674d9fa9d1fd47056b8d3da8bb"]
-    raise SystemExit(main(address))
+    raise SystemExit(main(address, ["Ethereum", "Base", "BNB Chain"]))

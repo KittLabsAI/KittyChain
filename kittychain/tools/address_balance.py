@@ -1,4 +1,4 @@
-"""Compute token balances and USD totals for an address across default Alchemy networks."""
+"""Compute token balances and USD totals for an address across supported Alchemy networks."""
 
 import argparse
 import json
@@ -26,17 +26,17 @@ else:
 
 DATA_API_BASE = "https://api.g.alchemy.com/data/v1"
 getcontext().prec = 50
-DEFAULT_NETWORKS = [
-    "eth-mainnet",
-    "solana-mainnet",
-    "arb-mainnet",
-    "base-mainnet",
-    "avax-mainnet",
-    "bnb-mainnet",
-    "blast-mainnet",
-    "zksync-mainnet",
-    "polygon-mainnet",
-]
+SUPPORTED_CHAINS = {
+    "Ethereum": "eth-mainnet",
+    "Solana": "solana-mainnet",
+    "Arbitrum": "arb-mainnet",
+    "Base": "base-mainnet",
+    "Avalanche C-Chain": "avax-mainnet",
+    "BNB Chain": "bnb-mainnet",
+    "Blast": "blast-mainnet",
+    "zkSync Era": "zksync-mainnet",
+    "Polygon": "polygon-mainnet",
+}
 
 
 class AlchemyAPIError(RuntimeError):
@@ -52,6 +52,23 @@ def _load_api_key() -> str:
 
 def _build_ssl_context() -> ssl.SSLContext:
     return ssl.create_default_context(cafile=certifi.where())
+
+
+def resolve_supported_networks(networks: list[str]) -> list[str]:
+    if not networks:
+        raise ValueError("networks is required")
+    resolved = []
+    invalid = []
+    for chain_name in networks:
+        network = SUPPORTED_CHAINS.get(chain_name)
+        if network is None:
+            invalid.append(chain_name)
+            continue
+        resolved.append(network)
+    if invalid:
+        supported = ", ".join(SUPPORTED_CHAINS)
+        raise ValueError(f"Unsupported networks: {', '.join(invalid)}. Supported chains: {supported}")
+    return resolved
 
 
 def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -170,8 +187,9 @@ def render_balance_text(summary: dict[str, Any]) -> str:
 class AddressBalanceTool(Tool):
     name = "address_balance"
     description = """
-Compute token balances and USD totals for an address across default Alchemy networks.
-Supports ETH, SOL, ARB, BASE, AVAX, BNB, BLAST, ZKSYNC, and Polygon.
+Compute token balances and USD totals for an address across supported Alchemy networks.
+Before calling this tool, call address_pattern first to determine candidate chain names.
+Pass those candidate chain names through the required networks field.
     """
     parameters = {
         "type": "object",
@@ -180,32 +198,43 @@ Supports ETH, SOL, ARB, BASE, AVAX, BNB, BLAST, ZKSYNC, and Polygon.
                 "type": "string",
                 "description": "The wallet address to inspect.",
             },
+            "networks": {
+                "type": "array",
+                "items": {"type": "string", "enum": list(SUPPORTED_CHAINS)},
+                "description": "Required candidate chain names. Supported values: " + ", ".join(SUPPORTED_CHAINS),
+            },
         },
-        "required": ["address"],
+        "required": ["address", "networks"],
     }
 
     _parent_agent = None
 
-    def execute(self, address: str) -> str:
+    def execute(self, address: str, networks: list[str]) -> str:
         if not address:
             raise ValueError("address is required")
+        resolved_networks = resolve_supported_networks(networks)
         api_key = _load_api_key()
         if not api_key:
             raise ValueError("ALCHEMY_API_KEY is required")
-        payload = get_tokens_by_wallet(api_key=api_key, address=address, networks=DEFAULT_NETWORKS)
+        payload = get_tokens_by_wallet(api_key=api_key, address=address, networks=resolved_networks)
         summary = summarize_tokens(payload)
         return render_balance_text(summary)
 
 
-def main(address: str) -> int:
+def main(address: str, networks: list[str]) -> int:
     if not address:
         print("Error: address is required")
+        return 1
+    try:
+        resolved_networks = resolve_supported_networks(networks)
+    except ValueError as exc:
+        print(f"Error: {exc}")
         return 1
     api_key = _load_api_key()
     if not api_key:
         print("Error: ALCHEMY_API_KEY is required")
         return 1
-    payload = get_tokens_by_wallet(api_key=api_key, address=address, networks=DEFAULT_NETWORKS)
+    payload = get_tokens_by_wallet(api_key=api_key, address=address, networks=resolved_networks)
     summary = summarize_tokens(payload)
     print(render_balance_text(summary))
     return 0
@@ -213,4 +242,4 @@ def main(address: str) -> int:
 
 if __name__ == "__main__":
     address = "0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB"
-    raise SystemExit(main(address))
+    raise SystemExit(main(address, ["Ethereum", "Base", "BNB Chain"]))

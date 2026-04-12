@@ -61,7 +61,8 @@ def test_system_prompt_includes_onchain_lookup_rules():
 
     system = prompt_builder.system_prompt([tool])
 
-    assert "On-chain lookup checks:" in system
+    assert "# On-chain lookup checks" in system
+    assert "address_pattern" in system
     assert "address_mallicious" in system
     assert "address_transfers" in system
     assert "address_identity" in system
@@ -75,12 +76,21 @@ def test_system_prompt_includes_user_facing_output_rules():
 
     system = prompt_builder.system_prompt([tool])
 
-    assert "When presenting results to the user:" in system
+    assert "# When presenting results to the user" in system
     assert "full address instead of an abbreviated form" in system
     assert "contract address" in system
     assert "each risk point with its reason" in system
     assert "original information sources" in system
     assert "include the link" in system
+
+
+def test_system_prompt_no_longer_embeds_address_pattern_guide():
+    tool = SimpleNamespace(name="demo_tool", description="Demo tool")
+
+    system = prompt_builder.system_prompt([tool])
+
+    assert "Address Pattern：" not in system
+    assert "NEAR can also use a 64-hex implicit account format." not in system
 
 
 def test_user_prompt_includes_todo_reminder_when_todos_exist():

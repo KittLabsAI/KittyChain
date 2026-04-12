@@ -11,6 +11,7 @@ from requests.exceptions import RetryError
 
 from kittychain.config import ApiConfig, Config
 import kittychain.tools.agent as agent_module
+import kittychain.tools.address_pattern as address_pattern_module
 import kittychain.tools.address_identity as address_identity_module
 import kittychain.tools.address_labels as address_labels_module
 import kittychain.tools.address_mallicious as address_mallicious_module
@@ -27,6 +28,7 @@ import kittychain.tools.skill as skill_module
 import kittychain.tools.token_info as token_info_module
 import kittychain.tools.token_security as token_security_module
 import kittychain.tools.todo_write as todo_write_module
+import kittychain.tools.web_browser as web_browser_module
 import kittychain.tools.web_fetch as web_fetch_module
 import kittychain.tools.web_search as web_search_module
 import kittychain.tools.write as write_module
@@ -77,6 +79,112 @@ class ToolsTests(unittest.TestCase):
                 "0x1111111111111111111111111111111111111111",
             ],
         )
+
+    def test_address_pattern_tool_is_registered(self):
+        from kittychain.tools import get_tool
+
+        tool = get_tool("address_pattern")
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "address_pattern")
+
+    def test_web_browser_tool_is_registered_and_web_fetch_is_not(self):
+        from kittychain.tools import get_tool
+
+        tool = get_tool("web_browser")
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "web_browser")
+        self.assertIsNone(get_tool("web_fetch"))
+
+    def test_infer_possible_chains_handles_known_formats_and_added_networks(self):
+        self.assertEqual(
+            address_pattern_module.infer_possible_chains("0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB"),
+            [
+                "Ethereum",
+                "BNB Chain",
+                "Polygon",
+                "Arbitrum",
+                "Optimism",
+                "Base",
+                "Avalanche C-Chain",
+                "Linea",
+                "zkSync Era",
+                "Scroll",
+                "Mantle",
+            ],
+        )
+        self.assertEqual(
+            address_pattern_module.infer_possible_chains("addr1qxyz"),
+            ["Cardano"],
+        )
+        self.assertEqual(
+            address_pattern_module.infer_possible_chains("tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb"),
+            ["Tezos"],
+        )
+        self.assertEqual(
+            address_pattern_module.infer_possible_chains("erd1qqqqqqqqqqqqqpgq9qv6t4g0z2vh7s0k8z9x4e"),
+            ["MultiversX"],
+        )
+        self.assertEqual(
+            address_pattern_module.infer_possible_chains("bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a"),
+            ["Bitcoin Cash"],
+        )
+        self.assertEqual(
+            address_pattern_module.infer_possible_chains("nano_3e3j5tko6r7d4bz3x4k7s4a8q5m9o6t3e8d9k1c2y7n6m5p4q3r2s1t"),
+            ["Nano"],
+        )
+
+    def test_tools_require_networks_parameter(self):
+        self.assertEqual(
+            address_balance_module.AddressBalanceTool.parameters["required"],
+            ["address", "networks"],
+        )
+        self.assertEqual(
+            address_labels_module.AddressLabelsTool.parameters["required"],
+            ["address", "networks"],
+        )
+        self.assertEqual(
+            address_transfers_module.AddressTransfersTool.parameters["required"],
+            ["address", "networks"],
+        )
+
+    def test_resolve_supported_networks_validates_chain_names(self):
+        self.assertEqual(
+            address_balance_module.resolve_supported_networks(["Ethereum", "Base"]),
+            ["eth-mainnet", "base-mainnet"],
+        )
+        self.assertEqual(
+            address_transfers_module.resolve_supported_networks(["Ethereum", "Base"]),
+            ["eth-mainnet", "base-mainnet"],
+        )
+        self.assertEqual(
+            address_labels_module.resolve_supported_chain_ids(["Ethereum", "Base"]),
+            [1, 8453],
+        )
+
+        with self.assertRaises(ValueError):
+            address_balance_module.resolve_supported_networks(["Unknown"])
+        with self.assertRaises(ValueError):
+            address_labels_module.resolve_supported_chain_ids(["Unknown"])
+        with self.assertRaises(ValueError):
+            address_transfers_module.resolve_supported_networks(["Unknown"])
+
+    def test_address_pattern_tool_execute_reports_candidates(self):
+        tool = address_pattern_module.AddressPatternTool()
+
+        output = tool.execute(address="TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL")
+
+        self.assertIn("Address: TNPeeaaFB7K9cmo4uQpcU32zGK8G1NYqeL", output)
+        self.assertIn("- TRON", output)
+
+    def test_address_pattern_tool_handles_unknown_format(self):
+        tool = address_pattern_module.AddressPatternTool()
+
+        output = tool.execute(address="not-an-address")
+
+        self.assertIn("Possible chains: none matched", output)
+        self.assertIn("could not map this address pattern", output.lower())
 
     def test_individual_sql_builders_target_only_their_own_tables(self):
         address = "0xabcdefabcdefabcdefabcdefabcdefabcdef1234"
@@ -233,13 +341,14 @@ class ToolsTests(unittest.TestCase):
                 "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             ],
             "test-key",
+            networks=list(address_labels_module.SUPPORTED_CHAINS),
             session=FakeSession(),
         )
 
-        self.assertEqual(len(calls), len(address_labels_module.SUPPORTED_CHAIN_IDS) * 2)
+        self.assertEqual(len(calls), len(address_labels_module.SUPPORTED_CHAINS) * 2)
         self.assertEqual(
             sorted({call["params"]["chain_id"] for call in calls}),
-            sorted(address_labels_module.SUPPORTED_CHAIN_IDS),
+            sorted(address_labels_module.SUPPORTED_CHAINS.values()),
         )
         self.assertTrue(all(call["headers"]["x-api-key"] == "test-key" for call in calls))
         self.assertEqual(len(summaries), 2)
@@ -283,13 +392,14 @@ class ToolsTests(unittest.TestCase):
         fetch_address_labels(
             "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "test-key",
+            networks=list(address_labels_module.SUPPORTED_CHAINS),
             session=FakeSession(),
             time_func=fake_time,
             sleep_func=fake_sleep,
         )
 
-        self.assertEqual(len(calls), len(address_labels_module.SUPPORTED_CHAIN_IDS))
-        self.assertEqual(len(sleeps), len(address_labels_module.SUPPORTED_CHAIN_IDS) - 1)
+        self.assertEqual(len(calls), len(address_labels_module.SUPPORTED_CHAINS))
+        self.assertEqual(len(sleeps), len(address_labels_module.SUPPORTED_CHAINS) - 1)
         for seconds in sleeps:
             self.assertAlmostEqual(seconds, 1 / address_labels_module.RATE_LIMIT_PER_SECOND)
 
@@ -352,7 +462,7 @@ class ToolsTests(unittest.TestCase):
         address_labels_module._load_api_key = lambda: ""
         try:
             with self.assertRaises(ValueError):
-                tool.execute("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+                tool.execute("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ["Ethereum"])
         finally:
             address_labels_module._load_api_key = original
 
@@ -362,14 +472,14 @@ class ToolsTests(unittest.TestCase):
         original_render = address_labels_module.render_text
         try:
             address_labels_module._load_api_key = lambda: "test-key"
-            address_labels_module.fetch_address_labels = lambda address, api_key: {
+            address_labels_module.fetch_address_labels = lambda address, api_key, networks: {
                 "address": address,
                 "labels": [{"category": "cex", "tags": ["Binance Hot Wallet"]}],
             }
             address_labels_module.render_text = lambda summary: f"rendered:{summary['address']}"
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                exit_code = address_labels_main("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+                exit_code = address_labels_main("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", ["Ethereum"])
         finally:
             address_labels_module._load_api_key = original_load_api_key
             address_labels_module.fetch_address_labels = original_fetch
@@ -475,14 +585,21 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("90 days", end_description)
 
     def test_tool_descriptions_include_investigation_guidance(self):
-        self.assertIn("oklink.com", web_fetch_module.WebFetchTool.description.lower())
-        self.assertIn("web_fetch", address_mallicious_module.AddressMalliciousTool.description)
+        self.assertIn("oklink.com", web_browser_module.WebBrowserTool.description.lower())
+        self.assertIn("web_browser", address_mallicious_module.AddressMalliciousTool.description)
         self.assertIn("address_labels", address_mallicious_module.AddressMalliciousTool.description)
         self.assertIn("address_balance", address_mallicious_module.AddressMalliciousTool.description)
         self.assertIn("address_transfers", address_mallicious_module.AddressMalliciousTool.description)
 
         self.assertIn("3-5", address_transfers_module.AddressTransfersTool.description)
         self.assertIn("address_mallicious", address_transfers_module.AddressTransfersTool.description)
+        self.assertIn("address_pattern", address_transfers_module.AddressTransfersTool.description)
+
+        self.assertIn("address_pattern", address_balance_module.AddressBalanceTool.description)
+        self.assertIn("candidate chain names", address_balance_module.AddressBalanceTool.description)
+
+        self.assertIn("address_pattern", address_labels_module.AddressLabelsTool.description)
+        self.assertIn("candidate chain names", address_labels_module.AddressLabelsTool.description)
 
         self.assertIn("比较慢", address_identity_module.AddressIdentityTool.description)
         self.assertIn("CEX", address_identity_module.AddressIdentityTool.description)
@@ -783,27 +900,42 @@ class ToolsTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("Updated todo list:", buffer.getvalue())
 
-    def test_web_fetch_main_prints_fetched_content(self):
-        class FakeResponse:
-            status_code = 200
-            url = "https://example.com"
-            text = "<html><body><h1>Hello</h1></body></html>"
-            headers = {"Content-Type": "text/html"}
+    def test_web_browser_main_prints_fetched_content(self):
+        class FakeCompleted:
+            def __init__(self, stdout):
+                self.stdout = stdout
+                self.stderr = ""
+                self.returncode = 0
 
-            def raise_for_status(self):
-                return None
+        calls = []
+        outputs = iter(
+            [
+                FakeCompleted(""),
+                FakeCompleted(""),
+                FakeCompleted("https://example.com"),
+                FakeCompleted("Hello from browser"),
+                FakeCompleted('[{"status": 200}]'),
+                FakeCompleted(""),
+            ]
+        )
 
-        original_get = web_fetch_module.requests.get
+        original_run = web_browser_module.subprocess.run
         try:
-            web_fetch_module.requests.get = lambda *args, **kwargs: FakeResponse()
+            def fake_run(args, **kwargs):
+                calls.append(args)
+                return next(outputs)
+
+            web_browser_module.subprocess.run = fake_run
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                exit_code = web_fetch_module.main("https://example.com")
+                exit_code = web_browser_module.main("https://example.com")
         finally:
-            web_fetch_module.requests.get = original_get
+            web_browser_module.subprocess.run = original_run
         self.assertEqual(exit_code, 0)
         self.assertIn("Fetched: https://example.com", buffer.getvalue())
-        self.assertIn("Hello", buffer.getvalue())
+        self.assertIn("Status: 200", buffer.getvalue())
+        self.assertIn("Hello from browser", buffer.getvalue())
+        self.assertEqual(calls[0][-2:], ["open", "https://example.com"])
 
     def test_web_search_main_prints_results(self):
         class FakeResponse:
@@ -833,6 +965,7 @@ class ToolsTests(unittest.TestCase):
     def test_new_tool_scripts_support_standalone_execution(self):
         script_paths = [
             "kittychain/tools/agent.py",
+            "kittychain/tools/address_pattern.py",
             "kittychain/tools/ask_user.py",
             "kittychain/tools/brief.py",
             "kittychain/tools/skill.py",

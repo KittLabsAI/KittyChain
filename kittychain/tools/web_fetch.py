@@ -42,9 +42,10 @@ Fetch content from a public URL, extract readable text, and summarize it
 against a prompt. Use this to inspect current web pages or text endpoints.
 # Important Notes
 - Always use this after calling other tools like address_malicious to verify their results by fetching relevant web pages.
-- `https://www.oklink.com/` for addresses, transactions, and token information by token address.
-- `https://www.blockchain.com/explorer` use when oklink is unavailable.
+- If unable to find information through this tool, use `agent-browser` skill to interact with the web page in a more flexible way.
+- `https://www.oklink.com/` or `https://www.blockchain.com/explorer` for addresses, transactions, and token information by token address.
 - `https://solscan.io/` for Solana addresses and transactions.
+- `https://suivision.xyz/` or `https://suiscan.xyz/mainnet/home` for Sui addresses and transactions.
 - `https://coinmarketcap.com/` for market information.
 - `https://tokenvitals.com/` for token information by token name.
     """

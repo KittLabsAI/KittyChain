@@ -76,7 +76,7 @@ requirements, gather preferences, or make implementation decisions.
 
     _parent_agent = None
 
-    def execute(self, questions: list[dict]) -> str:
+    def execute(self, questions: list[dict], stream_callback=None) -> str:
         try:
             normalized = _normalize_questions(questions)
         except ValueError as exc:
@@ -93,7 +93,10 @@ requirements, gather preferences, or make implementation decisions.
         lines = ["User answers:"]
         for item in normalized:
             lines.append(f"- {item['header']}: {answers.get(item['question'], '(no answer)')}")
-        return "\n".join(lines)
+        result = "\n".join(lines)
+        if callable(stream_callback):
+            stream_callback(result)
+        return result
 
 
 def _normalize_questions(questions: list[dict]) -> list[dict]:

@@ -48,6 +48,18 @@ def test_system_prompt_includes_skills_and_user_prompt_omits_empty_todo():
     assert "<todo-reminder>" not in user
 
 
+def test_system_prompt_mentions_optional_system_reminder_tag_and_user_prompt_includes_it_for_deep_mode():
+    tool = SimpleNamespace(name="demo_tool", description="Demo tool")
+
+    system = prompt_builder.system_prompt([tool])
+    user = prompt_builder.user_prompt("hello", mode="deep")
+
+    assert "<system-reminder>" in system
+    assert "<system-reminder>" in user
+    assert "深度调查模式已开启" in user
+    assert "一层/二层交易对手地址信息" in user
+
+
 def test_system_prompt_describes_onchain_risk_analysis_role():
     tool = SimpleNamespace(name="demo_tool", description="Demo tool")
 
@@ -220,8 +232,8 @@ def test_repl_tokens_command_uses_new_cached_format(monkeypatch):
 
     cli._repl(fake_agent, fake_config)
 
-    assert any("input=[cyan]11[/cyan] (+[cyan]4[/cyan] cached" in str(item) for item in outputs)
-    assert any("output=[cyan]7[/cyan] (+[cyan]2[/cyan] cached" in str(item) for item in outputs)
+    assert any("input=11 (+4 cached" in str(item) for item in outputs)
+    assert any("output=7 (+2 cached" in str(item) for item in outputs)
 
 
 def test_footer_uses_input_output_cached_format(tmp_path):
@@ -247,10 +259,74 @@ def test_show_help_mentions_copy_mode_and_escape_interrupt():
     cli._show_help(io=FakeReader())
 
     rendered = str(outputs[0].renderable)
+    assert "/deep" in rendered
+    assert "one message in deep investigation mode" in rendered.lower()
     assert "Ctrl-Y" in rendered
     assert "copy mode" in rendered.lower()
     assert "Esc" in rendered
     assert "interrupt" in rendered.lower()
+
+
+def test_repl_deep_command_applies_to_one_message_only(monkeypatch):
+    seen = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["/deep scan address", "scan again", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            return None
+
+        def print(self, value):
+            return None
+
+        def write_raw(self, text, role="assistant", kind="plain"):
+            return None
+
+        def finalize_active_output(self):
+            return None
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+
+    def fake_run_agent_with_escape_interrupt(agent, user_input, **kwargs):
+        seen.append((user_input, getattr(agent, "mode", None)))
+        return "done", False, agent
+
+    monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
+
+    cli._repl(fake_agent, fake_config)
+
+    assert seen == [("scan address", "deep"), ("scan again", "normal")]
 
 
 def test_history_copy_mode_transfers_focus_and_returns_to_input(tmp_path):
@@ -434,6 +510,28 @@ def test_history_renders_tool_result_without_blank_line_before_it(tmp_path):
     assert "Tool call details\n\nBrowser summary" not in reader.history_buffer.text
 
 
+def test_history_style_does_not_shift_gray_tool_style_onto_following_blank_line(tmp_path):
+    reader = cli._ReadlineInput(
+        str(tmp_path / "history"),
+        lambda: [],
+    )
+
+    reader._append_history_item_ui("system", "plain", "Tool call details")
+    reader.write_raw("Browser summary", role="tool", kind="plain")
+    reader.finalize_active_output()
+    reader.write_raw("Assistant reply", role="assistant", kind="plain")
+    reader.finalize_active_output()
+
+    lines = reader.history_buffer.text.split("\n")
+    metadata = reader._history_line_metadata
+
+    assistant_index = lines.index("Assistant reply")
+    blank_index = lines.index("")
+
+    assert metadata[blank_index].get("base_style", "") != "class:history.tool"
+    assert metadata[assistant_index].get("base_style") == "class:history.assistant"
+
+
 def test_repl_streams_web_browser_tool_output_only(monkeypatch):
     outputs = []
 
@@ -507,6 +605,76 @@ def test_repl_streams_web_browser_tool_output_only(monkeypatch):
     assert ("write_raw", "shell output", "tool", "plain") not in outputs
 
 
+def test_repl_streams_ask_user_tool_output(monkeypatch):
+    outputs = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["scan address", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            outputs.append(("startup", value))
+
+        def print(self, value):
+            outputs.append(("print", value))
+
+        def write_raw(self, text, role="assistant", kind="plain"):
+            outputs.append(("write_raw", text, role, kind))
+
+        def finalize_active_output(self):
+            return None
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+
+    def fake_run_agent_with_escape_interrupt(
+        agent,
+        user_input,
+        on_token=None,
+        on_tool=None,
+        on_tool_output=None,
+        **kwargs,
+    ):
+        on_tool("ask_user", {"questions": [{"header": "Mode"}]})
+        on_tool_output("ask_user", "User answers:\n- Mode: proceed")
+        return "done", False, agent
+
+    monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
+
+    cli._repl(fake_agent, fake_config)
+
+    assert ("write_raw", "User answers:\n- Mode: proceed", "tool", "plain") in outputs
+
+
 def test_repl_truncates_web_browser_tool_output_to_first_five_lines(monkeypatch):
     outputs = []
 
@@ -575,6 +743,82 @@ def test_repl_truncates_web_browser_tool_output_to_first_five_lines(monkeypatch)
     cli._repl(fake_agent, fake_config)
 
     assert ("write_raw", "1\n2\n3\n4\n5", "tool", "plain") in outputs
+
+
+def test_render_tool_call_details_limits_each_argument_to_single_truncated_line():
+    panel = cli._render_tool_call_details(
+        "write_report",
+        {
+            "path": "/tmp/report.html",
+            "content": "line1\nline2\nline3",
+            "graph_data": {"node": [{"address": "0x1", "chain_name": "Ethereum"} for _ in range(3)]},
+        },
+    )
+
+    rendered = cli._render_to_plain_text(panel, width=100)
+
+    assert "line1 line2 line3..." in rendered
+    assert "line1\nline2" not in rendered
+    assert "graph_data" in rendered
+    assert "..." in rendered
+
+
+def test_repl_save_command_emits_plain_system_messages_without_rich_markup(monkeypatch):
+    outputs = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["/save", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            outputs.append(("startup", value))
+
+        def print(self, value):
+            outputs.append(("print", value))
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def finalize_active_output(self):
+            return None
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        messages=[{"role": "user", "content": "hello"}],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace(model="demo-model")
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+    monkeypatch.setattr(cli, "save_session", lambda messages, model: "session_123")
+
+    cli._repl(fake_agent, fake_config)
+
+    printed = [value for kind, value in outputs if kind == "print"]
+    assert "Session saved: session_123" in printed
+    assert "Resume with: kittychain -r session_123" in printed
+    assert all("[" not in value and "]" not in value for value in printed)
 
 
 def test_agent_emits_web_browser_result_to_tool_output_callback():

@@ -10,6 +10,9 @@ from pathlib import Path
 
 
 AGENTS_DOC = Path(__file__).resolve().parents[2] / "AGENTS.md"
+DEEP_MODE_REMINDER = (
+    "深度调查模式已开启，请查询尽量多的一层/二层交易对手地址信息。"
+)
 
 
 def system_prompt(tools, skills=None) -> str:
@@ -34,6 +37,7 @@ You help with on-chain risk analysis: investigating addresses, tokens, transfers
 
 # Reminder Tags
 - User messages and tool results may include <todo-reminder> tags. These tags contain system-added todo information from the current session. Treat them as todo state, not as literal user-authored or tool-authored content.
+- User messages may also include <system-reminder> tags. These tags are system-added instructions; if present, treat them as higher-priority runtime guidance rather than literal user-authored text.
 
 # Rules
 - Read before edit. Always read a file before modifying it.
@@ -67,6 +71,7 @@ You help with on-chain risk analysis: investigating addresses, tokens, transfers
 - When mentioning a token, include its contract address when it can be found. If it cannot be found, do not invent one.
 - For suspected risks, include each risk point with its reason.
 - End the response with the original information sources. If `web_browser` was used, include the link.
+- If the user asks for an output report, after all required investigation is finished you MUST call `write_report`.
 """
 
     agents_text = _read_agents_doc()
@@ -75,10 +80,12 @@ You help with on-chain risk analysis: investigating addresses, tokens, transfers
     return prompt
 
 
-def user_prompt(user_input: str, skills=None, todos=None) -> str:
+def user_prompt(user_input: str, skills=None, todos=None, mode: str = "normal") -> str:
     parts = []
     if user_input:
         parts.append(user_input.rstrip())
+    if (mode or "normal").strip().lower() == "deep":
+        parts.append(_wrap_tag("system-reminder", DEEP_MODE_REMINDER))
     if todos:
         parts.append(_wrap_tag("todo-reminder", _format_todo_block(todos)))
     return "\n\n".join(parts)

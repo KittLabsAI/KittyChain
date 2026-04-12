@@ -35,6 +35,7 @@ import kittychain.tools.web_browser as web_browser_module
 import kittychain.tools.web_fetch as web_fetch_module
 import kittychain.tools.web_search as web_search_module
 import kittychain.tools.write as write_module
+import kittychain.tools.write_report as write_report_module
 from kittychain.tools.address_balance import render_balance_text, summarize_tokens
 from kittychain.tools.address_identity import (
     _run_sql_with_backoff,
@@ -107,6 +108,14 @@ class ToolsTests(unittest.TestCase):
         self.assertIsNotNone(tool)
         self.assertEqual(tool.name, "web_browser")
         self.assertIsNone(get_tool("web_fetch"))
+
+    def test_write_report_tool_is_registered(self):
+        from kittychain.tools import get_tool
+
+        tool = get_tool("write_report")
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "write_report")
 
     def test_social_search_tool_is_registered(self):
         from kittychain.tools import get_tool
@@ -626,6 +635,32 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("end_timestamp", end_description)
         self.assertIn("90 days", end_description)
 
+    def test_token_info_tool_rejects_ranges_longer_than_90_days_before_fetch(self):
+        original_load_api_key = token_info_module._load_api_key
+        original_fetch = token_info_module.fetch_token_info
+        fetch_called = {"value": False}
+        try:
+            token_info_module._load_api_key = lambda: "test-key"
+
+            def fake_fetch(*args, **kwargs):
+                fetch_called["value"] = True
+                return {}
+
+            token_info_module.fetch_token_info = fake_fetch
+
+            result = TokenInfoTool().execute(
+                token_address="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                chain_id=1,
+                start_time=1704067200,
+                end_time=1704067200 + 90 * 24 * 60 * 60 + 1,
+            )
+        finally:
+            token_info_module._load_api_key = original_load_api_key
+            token_info_module.fetch_token_info = original_fetch
+
+        self.assertEqual(result, "Error: start_time and end_time must be within 90 days")
+        self.assertFalse(fetch_called["value"])
+
     def test_tool_descriptions_include_investigation_guidance(self):
         self.assertIn("oklink.com", web_browser_module.WebBrowserTool.description.lower())
         self.assertIn("web_browser", address_mallicious_module.AddressMalliciousTool.description)
@@ -1097,6 +1132,520 @@ class ToolsTests(unittest.TestCase):
             web_browser_module.subprocess.run = original_run
 
         self.assertEqual(result, "Timed out, please try again.")
+
+    def test_write_report_rejects_missing_token_fields(self):
+        tool = write_report_module.WriteReportTool()
+
+        result = tool.execute(
+            type="token",
+            path="/tmp/token-report.html",
+            content="Token analysis",
+            sources=["https://example.com"],
+        )
+
+        self.assertIn("token_name is required for type=token", result)
+        self.assertIn("token_contract_address is required for type=token", result)
+        self.assertIn("top_holders is required for type=token", result)
+        self.assertIn("top_lp_holders is required for type=token", result)
+
+    def test_write_report_rejects_deep_mode_without_graph_requirements(self):
+        tool = write_report_module.WriteReportTool()
+
+        result = tool.execute(
+            type="address",
+            path="/tmp/address-report.html",
+            origin_address="0xabc",
+            mode="deep",
+            relevant_addresses=[{"address": "0x1"}],
+            graph_data={"node": [{"id": "n1", "label": "Node 1"}], "edge": [{"source": "n1", "target": "n2"}]},
+            sources=["https://example.com"],
+            content="Wallet report",
+        )
+
+        self.assertIn("graph_data must include at least 5 nodes", result)
+        self.assertIn("graph_data must include at least 5 edges", result)
+        self.assertIn("find more hop1/hop2 counterparties of 0xabc", result)
+
+    def test_write_report_rejects_normal_mode_when_agent_is_deep(self):
+        class FakeAgent:
+            mode = "deep"
+            deep_mode = True
+
+        tool = write_report_module.WriteReportTool()
+        tool.bind_agent(FakeAgent())
+
+        result = tool.execute(
+            type="address",
+            path="/tmp/address-report.html",
+            origin_address="0xabc",
+            mode="normal",
+            relevant_addresses=[
+                {"address": "0x1", "relation": "hop1-counterparty"},
+                {"address": "0x2", "relation": "hop2-counterparty"},
+            ],
+            graph_data={
+                "node": [
+                    {"address": f"0x{i:040x}", "chain_name": "Ethereum"}
+                    for i in range(1, 6)
+                ],
+                "edge": [
+                    {
+                        "source_address": f"0x{i:040x}",
+                        "target_address": f"0x{i+1:040x}",
+                        "direction": "from",
+                    }
+                    for i in range(1, 6)
+                ],
+            },
+            sources=["https://example.com"],
+            content="Wallet report",
+        )
+
+        self.assertIn("mode must be deep when agent.mode=deep", result)
+
+    def test_write_report_relevant_address_relation_description_and_validation_for_address_reports(self):
+        description = write_report_module.WriteReportTool.parameters["properties"]["relevant_addresses"]["description"]
+
+        self.assertIn("hop1-counterparty", description)
+        self.assertIn("hop2-counterparty", description)
+        self.assertIn("hop3-counterparty", description)
+
+        errors = write_report_module.validate_payload(
+            {
+                "type": "address",
+                "mode": "normal",
+                "path": "/tmp/address-report.html",
+                "origin_address": "0xabc",
+                "relevant_addresses": [{"address": "0x1", "relation": "owner"}],
+                "graph_data": {},
+                "sources": ["https://example.com"],
+                "content": "Wallet report",
+                "top_holders": [],
+                "top_lp_holders": [],
+                "token_name": "",
+                "token_contract_address": "",
+            }
+        )
+
+        self.assertIn(
+            "relevant_addresses[0].relation must be one of: hop1-counterparty, hop2-counterparty, hop3-counterparty",
+            errors,
+        )
+        self.assertFalse(hasattr(write_report_module, "validate_graph_data_for_origin"))
+
+    def test_write_report_deep_mode_can_ask_user_to_confirm_normal_fallback(self):
+        asks = []
+
+        class FakeLLM:
+            def __init__(self):
+                self.calls = []
+
+            def clone(self):
+                return self
+
+            def complete(self, messages, **kwargs):
+                self.calls.append((messages, kwargs))
+                if len(self.calls) == 1:
+                    return SimpleNamespace(content="yes")
+                return SimpleNamespace(
+                    content=(
+                        "<h1>Summary</h1><p>Wallet summary</p>"
+                        "<h2>Risk Overview</h2><p>Low</p>"
+                        "<h2>Asset Overview</h2><p>Healthy</p>"
+                        "<h2>Transaction Overview</h2><p>Active</p>"
+                        "<h2>Association Graph</h2><div class='graph'>GRAPH</div>"
+                        "<h2>Sources</h2><ul><li>src</li></ul>"
+                    )
+                )
+
+        class FakeAgent:
+            mode = "deep"
+            deep_mode = True
+
+            def __init__(self):
+                self.llm = FakeLLM()
+                self.ask_user_handler = self.answer
+
+            def answer(self, questions):
+                asks.append(questions)
+                return {questions[0]["question"]: "Generate report directly with the same payload"}
+
+        tool = write_report_module.WriteReportTool()
+        tool.bind_agent(FakeAgent())
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "address-report.html"
+            original_renderer = write_report_module.render_graph_html
+            write_report_module.render_graph_html = lambda graph_data: '<div class="graph">GRAPH</div>'
+            try:
+                result = tool.execute(
+                    type="address",
+                    path=str(output_path),
+                    origin_address="0xabc",
+                    mode="normal",
+                    relevant_addresses=[{"address": "0x1", "relation": "owner"}],
+                    graph_data={
+                        "node": [{"address": "0x1", "chain_name": "Ethereum"}],
+                        "edge": [{"source_address": "0x1", "target_address": "0x2", "direction": "from"}],
+                    },
+                    sources=["https://example.com"],
+                    content="Wallet report",
+                )
+            finally:
+                write_report_module.render_graph_html = original_renderer
+
+        self.assertEqual(len(asks), 1)
+        self.assertIn("same payload", asks[0][0]["question"].lower())
+        self.assertIn("已经在", result)
+        llm = tool._parent_agent.llm
+        self.assertIn("answer only `yes` or `no`", llm.calls[0][1]["system"])
+        self.assertIn("Generate report directly with the same payload", llm.calls[0][0][0]["content"])
+        self.assertIn("GRAPH", llm.calls[1][0][0]["content"])
+
+    def test_write_report_returns_raw_ask_user_answer_when_llm_says_not_to_skip_validation(self):
+        class FakeLLM:
+            def __init__(self):
+                self.calls = []
+
+            def clone(self):
+                return self
+
+            def complete(self, messages, **kwargs):
+                self.calls.append((messages, kwargs))
+                return SimpleNamespace(content="no")
+
+        class FakeAgent:
+            mode = "deep"
+            deep_mode = True
+
+            def __init__(self):
+                self.llm = FakeLLM()
+                self.ask_user_handler = self.answer
+
+            def answer(self, questions):
+                return {questions[0]["question"]: "Please do not skip validation yet."}
+
+        tool = write_report_module.WriteReportTool()
+        tool.bind_agent(FakeAgent())
+
+        result = tool.execute(
+            type="address",
+            path="/tmp/address-report.html",
+            origin_address="0xabc",
+            mode="normal",
+            relevant_addresses=[{"address": "0x1", "relation": "owner"}],
+            graph_data={
+                "node": [{"address": "0x1", "chain_name": "Ethereum"}],
+                "edge": [{"source_address": "0x1", "target_address": "0x2", "direction": "from"}],
+            },
+            sources=["https://example.com"],
+            content="Wallet report",
+        )
+
+        self.assertEqual(result, "Please do not skip validation yet.")
+
+    def test_write_report_build_prompts_include_graph_html_and_english_association_graph_section(self):
+        payload = {
+            "type": "address",
+            "mode": "deep",
+            "origin_address": "0xabc",
+            "token_name": "",
+            "token_contract_address": "",
+            "top_holders": [],
+            "top_lp_holders": [],
+            "relevant_addresses": [{"address": "0x1", "relation": "hop1-counterparty"}],
+            "sources": ["https://example.com"],
+            "content": "Wallet report",
+            "graph_html": '<div class="graph">GRAPH</div>',
+        }
+
+        user_prompt = write_report_module.build_user_prompt(payload)
+        system_prompt = write_report_module.build_system_prompt(payload)
+
+        self.assertIn('"graph_html": "<div class=\\"graph\\">GRAPH</div>"', user_prompt)
+        self.assertIn("Association Graph", system_prompt)
+        self.assertIn("use the graph_html", system_prompt)
+        self.assertNotIn("风险概况", system_prompt)
+        self.assertNotIn("参考信息源", system_prompt)
+
+    def test_write_report_requires_output_path(self):
+        tool = write_report_module.WriteReportTool()
+
+        result = tool.execute(
+            type="address",
+            origin_address="0xabc",
+            sources=["https://example.com"],
+            content="Wallet report",
+        )
+
+        self.assertEqual(result, "Error: path is required")
+
+    def test_write_report_graph_description_mentions_expected_node_and_edge_fields(self):
+        description = write_report_module.WriteReportTool.parameters["properties"]["graph_data"]["description"]
+
+        self.assertIn("Required for `deep` mode", description)
+        self.assertIn('"node"', description)
+        self.assertIn('"edge"', description)
+        self.assertIn("address", description)
+        self.assertIn("chain_name", description)
+        self.assertIn("source_address", description)
+        self.assertIn("target_address", description)
+        self.assertIn("direction", description)
+
+    def test_write_report_render_graph_html_uses_demo_style_node_and_edge_fields(self):
+        recorded = {"nodes": [], "edges": [], "barnes_hut": 0, "options": []}
+
+        class FakeNetwork:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+            def barnes_hut(self):
+                recorded["barnes_hut"] += 1
+
+            def set_options(self, options):
+                recorded["options"].append(options)
+
+            def add_node(self, node_id, **kwargs):
+                recorded["nodes"].append((node_id, kwargs))
+
+            def add_edge(self, source, target, **kwargs):
+                recorded["edges"].append((source, target, kwargs))
+
+            def generate_html(self, notebook=False):
+                return (
+                    "<html><body><div>graph</div><script>"
+                    "nodes = new vis.DataSet([]);"
+                    "edges = new vis.DataSet([]);"
+                    "network = new vis.Network(container, data, options);"
+                    "</script></body></html>"
+                )
+
+        fake_network_module = SimpleNamespace(Network=FakeNetwork)
+        fake_pyvis_module = SimpleNamespace(network=fake_network_module)
+
+        with patch.dict(
+            sys.modules,
+            {
+                "pyvis": fake_pyvis_module,
+                "pyvis.network": fake_network_module,
+            },
+        ):
+            html = write_report_module.render_graph_html(
+                {
+                    "node": [
+                        {
+                            "address": "0x1111111111111111111111111111111111111111",
+                            "chain_name": "Ethereum",
+                            "address_identity": {"entity": "Origin wallet"},
+                            "address_labels": ["market maker"],
+                            "address_balance": {"usd_value": 1200000},
+                            "address_malicious": {"risk_level": "low"},
+                        }
+                    ],
+                    "edge": [
+                        {
+                            "source_address": "0x1111111111111111111111111111111111111111",
+                            "target_address": "0x2222222222222222222222222222222222222222",
+                            "direction": "from",
+                            "usd_value": 420000,
+                            "start_time": "2026-04-11T00:00:00Z",
+                            "end_time": "2026-04-12T00:00:00Z",
+                        }
+                    ]
+                    + [
+                        {
+                            "source_address": "0x3333333333333333333333333333333333333333",
+                            "target_address": "0x4444444444444444444444444444444444444444",
+                            "direction": "to",
+                            "usd_value": 1200,
+                        }
+                    ],
+                }
+            )
+
+        self.assertIn('class="relationship-graph"', html)
+        self.assertIn("function htmlTitle(html)", html)
+        self.assertEqual(recorded["barnes_hut"], 1)
+        self.assertEqual(len(recorded["options"]), 1)
+        self.assertIn('"navigationButtons": true', recorded["options"][0])
+        self.assertEqual(recorded["nodes"][0][0], "0x1111111111111111111111111111111111111111")
+        self.assertIn("0x1111", recorded["nodes"][0][1]["label"])
+        self.assertIn("Origin wallet", recorded["nodes"][0][1]["title"])
+        self.assertEqual(recorded["nodes"][0][1]["group"], "Ethereum")
+        self.assertEqual(recorded["edges"][0][0], "0x1111111111111111111111111111111111111111")
+        self.assertEqual(recorded["edges"][0][1], "0x2222222222222222222222222222222222222222")
+        self.assertEqual(recorded["edges"][0][2]["arrows"], "to")
+        self.assertEqual(recorded["edges"][1][2]["arrows"], "to")
+        self.assertIn("Counterparty relation", recorded["edges"][0][2]["title"])
+        self.assertGreaterEqual(recorded["edges"][0][2]["width"], 2)
+
+    def test_wrap_html_document_includes_vis_network_assets_when_graph_section_exists(self):
+        document = write_report_module.wrap_html_document(
+            '<section class="relationship-graph"><div id="mynetwork"></div><script>new vis.Network()</script></section>',
+            "Demo Report",
+        )
+
+        self.assertIn("vis-network.min.css", document)
+        self.assertIn("vis-network.min.js", document)
+        self.assertIn("#mynetwork", document)
+        self.assertIn("height: 860px", document)
+
+    def test_write_report_generates_address_report_and_embeds_graph(self):
+        class FakeLLM:
+            def __init__(self):
+                self.calls = []
+
+            def clone(self):
+                return self
+
+            def complete(self, messages, **kwargs):
+                self.calls.append((messages, kwargs))
+                return SimpleNamespace(
+                    content=(
+                        "<h1>Summary</h1><p>Wallet summary</p>"
+                        "<h2>Risk Overview</h2><p>Low</p>"
+                        "<h2>Asset Overview</h2><p>Healthy</p>"
+                        "<h2>Transaction Overview</h2><p>Active</p>"
+                        "<h2>Relevant Addresses</h2>"
+                        "<table><tr><th>Address</th></tr><tr><td>0x1</td></tr></table>"
+                        "<h2>Association Graph</h2><div class='graph'>GRAPH</div>"
+                        "<h2>Sources</h2><ul><li>src</li></ul>"
+                    )
+                )
+
+        class FakeAgent:
+            def __init__(self):
+                self.llm = FakeLLM()
+
+        tool = write_report_module.WriteReportTool()
+        tool.bind_agent(FakeAgent())
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            original_renderer = write_report_module.render_graph_html
+            output_path = Path(tmpdir) / "address-report.html"
+            write_report_module.render_graph_html = lambda graph_data: '<div class="graph">GRAPH</div>'
+            try:
+                result = tool.execute(
+                    type="address",
+                    path=str(output_path),
+                    origin_address="0xabc",
+                    mode="deep",
+                    relevant_addresses=[
+                        {
+                            "address": "0x1",
+                            "balance": "10",
+                            "labels": "label",
+                            "identity": "entity",
+                            "relation": "hop1-counterparty",
+                            "notes": "note",
+                        }
+                    ],
+                    graph_data={
+                        "node": [
+                            {
+                                "address": f"0x{i:040x}",
+                                "chain_name": "Ethereum",
+                                "address_identity": {"entity": f"Node {i}"},
+                            }
+                            for i in range(1, 6)
+                        ],
+                        "edge": [
+                            {
+                                "source_address": "0x0000000000000000000000000000000000000001",
+                                "target_address": f"0x{i:040x}",
+                                "direction": "from",
+                            }
+                            for i in range(2, 7)
+                        ],
+                    },
+                    sources=["https://example.com/a", "https://example.com/b"],
+                    content="Main wallet content",
+                )
+            finally:
+                write_report_module.render_graph_html = original_renderer
+
+            self.assertIn("已经在", result)
+            self.assertIn(str(output_path), result)
+            report_html = output_path.read_text()
+            self.assertIn("GRAPH", report_html)
+            self.assertIn("Wallet summary", report_html)
+
+        llm = tool._parent_agent.llm
+        self.assertEqual(len(llm.calls), 1)
+        messages, kwargs = llm.calls[0]
+        self.assertIn("origin_address", messages[0]["content"])
+        self.assertIn("graph_html", messages[0]["content"])
+        self.assertIn("Relevant Addresses", kwargs["system"])
+        self.assertIn("Association Graph", kwargs["system"])
+        self.assertIn("must call write_report", kwargs["system"])
+        self.assertIn("If the report mode is `deep`, make it thorough", kwargs["system"])
+
+    def test_write_report_generates_token_report_without_graph_when_not_needed(self):
+        class FakeLLM:
+            def clone(self):
+                return self
+
+            def complete(self, messages, **kwargs):
+                self.messages = messages
+                self.kwargs = kwargs
+                return SimpleNamespace(
+                    content=(
+                        "<h1>Summary</h1><p>Token summary</p>"
+                        "<h2>风险概况</h2><p>Medium</p>"
+                        "<h2>Top Holders概况</h2><p>Holder notes</p>"
+                        "<h2>Top LP Holders概况</h2><p>LP notes</p>"
+                        "<h2>参考信息源</h2><ul><li>src</li></ul>"
+                    )
+                )
+
+        class FakeAgent:
+            def __init__(self):
+                self.llm = FakeLLM()
+
+        tool = write_report_module.WriteReportTool()
+        tool.bind_agent(FakeAgent())
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "token-report.html"
+            try:
+                result = tool.execute(
+                    type="token",
+                    path=str(output_path),
+                    token_name="KITTY",
+                    token_contract_address="0xtoken",
+                    top_holders=[
+                        {
+                            "address": "0xholder",
+                            "balance": "100",
+                            "labels": "holder",
+                            "identity": "entity",
+                            "notes": "top holder",
+                        }
+                    ],
+                    top_lp_holders=[
+                        {
+                            "address": "0xlp",
+                            "balance": "50",
+                            "labels": "lp",
+                            "identity": "entity",
+                            "notes": "top lp",
+                        }
+                    ],
+                    sources=["https://example.com/token"],
+                    content="Token report body",
+                )
+            finally:
+                pass
+
+            self.assertIn("已经在", result)
+            self.assertIn(str(output_path), result)
+            report_html = output_path.read_text()
+            self.assertIn("Token summary", report_html)
+            self.assertNotIn('class="graph"', report_html)
+
+        llm = tool._parent_agent.llm
+        self.assertIn("top_holders", llm.messages[0]["content"])
+        self.assertIn("Top LP Holders", llm.kwargs["system"])
 
     def test_web_search_main_prints_results(self):
         class FakeResponse:

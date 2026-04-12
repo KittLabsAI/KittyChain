@@ -40,6 +40,7 @@ class AgentRun:
     state: AgentState
     ask_user_handler: object = None
     on_brief_message: object = None
+    tool_output_handler: object = None
 
 
 def repair_incomplete_tool_calls(messages: list[dict]) -> None:
@@ -92,10 +93,13 @@ class Agent:
         self._run_local = threading.local()
         self._ask_user_handler = None
         self._on_brief_message = None
+        self._tool_output_handler = None
         self.context = ContextManager(max_tokens=max_context_tokens)
         self.max_rounds = max_rounds
         self.skills = []
         self._system = ""
+        self.mode = "normal"
+        self.deep_mode = False
         self._initialize_prompt_state()
 
         for tool in self.tools:
@@ -179,6 +183,21 @@ class Agent:
             return
         self._on_brief_message = value
 
+    @property
+    def tool_output_handler(self):
+        current_run = self._current_run()
+        if current_run is not None:
+            return current_run.tool_output_handler
+        return self._tool_output_handler
+
+    @tool_output_handler.setter
+    def tool_output_handler(self, value) -> None:
+        current_run = self._current_run()
+        if current_run is not None:
+            current_run.tool_output_handler = value
+            return
+        self._tool_output_handler = value
+
     def begin_run(self) -> AgentRun:
         with self._state_lock:
             return AgentRun(
@@ -189,6 +208,7 @@ class Agent:
                 ),
                 ask_user_handler=self._ask_user_handler,
                 on_brief_message=self._on_brief_message,
+                tool_output_handler=self._tool_output_handler,
             )
 
     def snapshot_run(self, run: AgentRun, repair_messages: bool = False) -> AgentRun:
@@ -200,6 +220,7 @@ class Agent:
             ),
             ask_user_handler=run.ask_user_handler,
             on_brief_message=run.on_brief_message,
+            tool_output_handler=run.tool_output_handler,
         )
         if repair_messages:
             repair_incomplete_tool_calls(snapshot.state.messages)
@@ -232,7 +253,7 @@ class Agent:
         return [{"role": "system", "content": self._system}] + self.messages
 
     def _build_user_message(self, user_input: str) -> str:
-        return user_prompt(user_input, todos=self.todos)
+        return user_prompt(user_input, todos=self.todos, mode=self.mode)
 
     def _tool_schemas(self) -> list[dict]:
         return [tool.schema() for tool in self.tools]
@@ -249,16 +270,25 @@ class Agent:
         worker.brief_messages = copy.deepcopy(self.brief_messages)
         worker.ask_user_handler = self.ask_user_handler
         worker.on_brief_message = self.on_brief_message
+        worker.tool_output_handler = self.tool_output_handler
         worker.skills = list(self.skills)
         worker._system = self._system
         return worker
 
-    def chat(self, user_input: str, on_token=None, on_tool=None, on_tool_output=None, cancel_event=None) -> str:
+    def chat(self, user_input: str, on_token=None, on_tool=None, on_tool_output=None, cancel_event=None, mode=None) -> str:
         """Process one user message. May involve multiple LLM/tool rounds."""
-        self.messages.append({"role": "user", "content": self._build_user_message(user_input)})
-        self.context.maybe_compress(self.messages, self.llm)
+        requested_mode = str(mode or self.mode or "normal").strip().lower()
+        if requested_mode not in {"normal", "deep"}:
+            requested_mode = "normal"
+
+        previous_mode = self.mode
+        previous_deep_mode = self.deep_mode
+        self.mode = requested_mode
+        self.deep_mode = requested_mode == "deep"
 
         try:
+            self.messages.append({"role": "user", "content": self._build_user_message(user_input)})
+            self.context.maybe_compress(self.messages, self.llm)
             self._raise_if_cancelled(cancel_event)
 
             for _ in range(self.max_rounds):
@@ -311,6 +341,9 @@ class Agent:
         except CancellationRequested:
             repair_incomplete_tool_calls(self.messages)
             return "(interrupted)"
+        finally:
+            self.mode = previous_mode
+            self.deep_mode = previous_deep_mode
 
     def _exec_tool(self, tool_call, cancel_event=None, on_output=None) -> str:
         """Execute a single tool call and return the result string."""
@@ -328,7 +361,7 @@ class Agent:
             if cancel_event is not None and "cancel_event" in parameters:
                 execute_kwargs["cancel_event"] = cancel_event
             result = tool.execute(**execute_kwargs)
-            if on_output is not None and tool_call.name == "web_browser" and not streamed_output and result:
+            if on_output is not None and tool_call.name in {"web_browser", "ask_user"} and not streamed_output and result:
                 on_output(tool_call.name, result)
             return result
         except TypeError as exc:

@@ -27,6 +27,7 @@ from .todo_write import TodoWriteTool
 from .web_browser import WebBrowserTool
 from .web_search import WebSearchTool
 from .write import WriteTool
+from .write_report import WriteReportTool
 
 _TOOL_TYPES = [
     BashTool,
@@ -40,6 +41,7 @@ _TOOL_TYPES = [
     SkillTool,
     WebBrowserTool,
     WebSearchTool,
+    WriteReportTool,
     TodoWriteTool,
     BriefTool,
     AskUserTool,
@@ -93,6 +95,7 @@ __all__ = [
     "WebBrowserTool",
     "WebSearchTool",
     "WriteTool",
+    "WriteReportTool",
     "ALL_TOOLS",
     "create_tool_instances",
     "get_tool",

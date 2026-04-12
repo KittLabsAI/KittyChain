@@ -3,6 +3,7 @@
 import argparse
 from dataclasses import dataclass
 import inspect
+import json
 import math
 import os
 from pathlib import Path
@@ -67,6 +68,7 @@ _PIXEL_CAT_ART = (
 )
 
 _BUILTIN_COMMANDS = {
+    "/deep": "Run one message in deep investigation mode",
     "/help": "Show this help",
     "/reset": "Clear conversation history",
     "/skills": "Show loaded local skills",
@@ -333,6 +335,10 @@ def main():
 
 
 def _run_once(agent: Agent, prompt: str):
+    mode, prompt = _extract_message_mode(prompt)
+    if mode == "deep" and prompt == "/deep":
+        raise ValueError("/deep requires a message")
+
     streamed: list[str] = []
     assistant_stream = _MarkdownStreamRenderer(_emit_raw_terminal)
 
@@ -353,7 +359,7 @@ def _run_once(agent: Agent, prompt: str):
     agent.on_brief_message = on_brief
     agent.ask_user_handler = _non_interactive_ask_user
 
-    response = agent.chat(prompt, on_token=on_token, on_tool=on_tool)
+    response = agent.chat(prompt, on_token=on_token, on_tool=on_tool, mode=mode)
     assistant_stream.finish()
     if not streamed:
         _write_assistant_response(_emit_raw_terminal, response)
@@ -384,11 +390,13 @@ def _repl(agent: Agent, config: Config):
         if not user_input:
             return
 
+        request_mode, user_input = _extract_message_mode(user_input)
+
         resolved_command, matches = _resolve_command_prefix(user_input, agent.skills)
         if resolved_command and resolved_command != user_input:
             user_input = resolved_command
         elif user_input.startswith("/") and matches and resolved_command is None and user_input not in matches:
-            input_reader.print("[yellow]Matching commands:[/yellow] " + ", ".join(matches))
+            input_reader.print("Matching commands: " + ", ".join(matches))
             return
 
         if user_input == "/quit":
@@ -399,11 +407,14 @@ def _repl(agent: Agent, config: Config):
         if user_input == "/help":
             _show_help(input_reader)
             return
+        if user_input == "/deep":
+            input_reader.print("Use /deep <message> to run one message in deep investigation mode.")
+            return
         if user_input == "/reset":
             agent.reset()
             pending_skill = None
             input_reader.clear_history()
-            input_reader.print("[yellow]Conversation reset.[/yellow]")
+            input_reader.print("Conversation reset.")
             return
         if user_input == "/skills":
             _show_skills(agent.skills, input_reader)
@@ -415,15 +426,15 @@ def _repl(agent: Agent, config: Config):
             completion_cache_tokens = getattr(agent.llm, "total_completion_cache_tokens", 0)
             input_reader.print(
                 "Tokens used this session: "
-                f"input=[cyan]{prompt_tokens}[/cyan] (+[cyan]{prompt_cache_tokens}[/cyan] cached, total: [bold]{prompt_tokens + prompt_cache_tokens}[/bold]) "
-                f"output=[cyan]{completion_tokens}[/cyan] (+[cyan]{completion_cache_tokens}[/cyan] cached, total: [bold]{completion_tokens + completion_cache_tokens}[/bold])"
+                f"input={prompt_tokens} (+{prompt_cache_tokens} cached, total: {prompt_tokens + prompt_cache_tokens}) "
+                f"output={completion_tokens} (+{completion_cache_tokens} cached, total: {completion_tokens + completion_cache_tokens})"
             )
             return
         if user_input == "/model":
             _run_model_selector(input_reader, agent, config)
             return
         if user_input.startswith("/model "):
-            input_reader.print("[yellow]Use /model to open the selector.[/yellow]")
+            input_reader.print("Use /model to open the selector.")
             return
         if user_input == "/compact":
             from .runtime.context import estimate_tokens
@@ -433,26 +444,26 @@ def _repl(agent: Agent, config: Config):
             after = estimate_tokens(agent.messages)
             if compressed:
                 input_reader.print(
-                    f"[green]Compressed: {before} -> {after} tokens ({len(agent.messages)} messages)[/green]"
+                    f"Compressed: {before} -> {after} tokens ({len(agent.messages)} messages)"
                 )
             else:
                 input_reader.print(
-                    f"[dim]Nothing to compress ({before} tokens, {len(agent.messages)} messages)[/dim]"
+                    f"Nothing to compress ({before} tokens, {len(agent.messages)} messages)"
                 )
             return
         if user_input == "/save":
             session_id = save_session(agent.messages, config.model)
-            input_reader.print(f"[green]Session saved: {session_id}[/green]")
+            input_reader.print(f"Session saved: {session_id}")
             input_reader.print(f"Resume with: kittychain -r {session_id}")
             return
         if user_input == "/sessions":
             sessions = list_sessions()
             if not sessions:
-                input_reader.print("[dim]No saved sessions.[/dim]")
+                input_reader.print("No saved sessions.")
             else:
                 for session in sessions:
                     input_reader.print(
-                        f"  [cyan]{session['id']}[/cyan] ({session['model']}, {session['saved_at']}) {session['preview']}"
+                        f"  {session['id']} ({session['model']}, {session['saved_at']}) {session['preview']}"
                     )
             return
 
@@ -463,8 +474,8 @@ def _repl(agent: Agent, config: Config):
                 user_input = _build_skill_request(skill, task)
             else:
                 pending_skill = skill
-                input_reader.print(f"[cyan]Selected skill:[/cyan] /{skill.name}")
-                input_reader.print("[dim]Your next non-command message will use this skill.[/dim]")
+                input_reader.print(f"Selected skill: /{skill.name}")
+                input_reader.print("Your next non-command message will use this skill.")
                 return
         elif pending_skill is not None and not user_input.startswith("/"):
             user_input = _build_skill_request(pending_skill, user_input)
@@ -493,7 +504,7 @@ def _repl(agent: Agent, config: Config):
                 input_reader.print(line)
 
         def on_tool_output(name, text):
-            if name != "web_browser" or not text:
+            if name not in {"web_browser", "ask_user"} or not text:
                 return
             assistant_stream.finish()
             input_reader.write_raw(_truncate_web_browser_output(text), role="tool", kind="plain")
@@ -501,6 +512,8 @@ def _repl(agent: Agent, config: Config):
         cancel_event = threading.Event()
         input_reader.attach_cancel_event(cancel_event)
 
+        agent.mode = request_mode
+        agent.deep_mode = request_mode == "deep"
         try:
             response, interrupted, next_agent = _run_agent_with_escape_interrupt(
                 agent,
@@ -512,21 +525,26 @@ def _repl(agent: Agent, config: Config):
                 on_brief=on_brief,
                 cancel_event=cancel_event,
                 enable_tty_monitor=False,
+                mode=request_mode,
             )
             agent = next_agent
+            agent.mode = "normal"
+            agent.deep_mode = False
             assistant_stream.finish()
 
             if interrupted or response == "(interrupted)":
-                input_reader.print("[yellow]Interrupted.[/yellow]")
+                input_reader.print("Interrupted.")
             elif not streamed:
                 _write_assistant_response(input_reader.write, response)
         except KeyboardInterrupt:
             assistant_stream.finish()
-            input_reader.print("\n[yellow]Interrupted.[/yellow]")
+            input_reader.print("\nInterrupted.")
         except Exception as exc:
             assistant_stream.finish()
-            input_reader.print(f"\n[red]Error: {exc}[/red]")
+            input_reader.print(f"\nError: {exc}")
         finally:
+            agent.mode = "normal"
+            agent.deep_mode = False
             input_reader.detach_cancel_event(cancel_event)
 
     try:
@@ -548,6 +566,7 @@ def _show_help(io=None):
         Panel(
             "[bold]Commands:[/bold]\n"
             "  /help          Show this help\n"
+            "  /deep <msg>    Run one message in deep investigation mode\n"
             "  /reset         Clear conversation history\n"
             "  /skills        Show loaded local skills\n"
             "  /<skill name>  Use a loaded skill\n"
@@ -565,6 +584,17 @@ def _show_help(io=None):
             border_style="dim",
         )
     )
+
+
+def _extract_message_mode(user_input: str) -> tuple[str, str]:
+    stripped = user_input.strip()
+    if not stripped:
+        return "normal", stripped
+    if stripped.casefold() == "/deep":
+        return "deep", "/deep"
+    if stripped.casefold().startswith("/deep "):
+        return "deep", stripped[6:].strip()
+    return "normal", stripped
 
 
 def _show_skills(skills, io=None):
@@ -593,7 +623,7 @@ def _select_model_index(io, config: Config) -> int | None:
     lines, notice = _format_model_choices(config)
     io.print("\n".join(lines))
     if notice:
-        io.print(f"[dim]{notice}[/dim]")
+        io.print(notice)
 
     if len(config.models) <= 1:
         return None
@@ -611,7 +641,7 @@ def _select_model_index(io, config: Config) -> int | None:
             if 0 <= index < len(config.models):
                 return index
 
-        io.print(f"[yellow]Choose a model number between 1 and {len(config.models)}.[/yellow]")
+        io.print(f"Choose a model number between 1 and {len(config.models)}.")
 
 
 def _run_model_selector(io, agent: Agent, config: Config) -> None:
@@ -621,7 +651,7 @@ def _run_model_selector(io, agent: Agent, config: Config) -> None:
 
     if config.active_model_index() == selected_index:
         selected = config.models[selected_index]
-        io.print(f"[dim]Already using [cyan]{selected.provider}/{selected.model_name}[/cyan][/dim]")
+        io.print(f"Already using {selected.provider}/{selected.model_name}")
         return
 
     selected = config.activate_model(selected_index)
@@ -632,7 +662,7 @@ def _run_model_selector(io, agent: Agent, config: Config) -> None:
         base_url=selected.base_url,
     )
     config.write()
-    io.print(f"Switched to [cyan]{selected.provider}/{selected.model_name}[/cyan]")
+    io.print(f"Switched to {selected.provider}/{selected.model_name}")
 
 
 def _format_skills(skills) -> str:
@@ -841,8 +871,26 @@ def _format_tool_call(name: str, kwargs: dict) -> str:
 
 def _format_tool_call_details(name: str, kwargs: dict) -> list[tuple[str, object]]:
     details: list[tuple[str, object]] = [("tool", name)]
-    details.extend(_flatten_tool_call_arguments(kwargs))
+    details.extend((key, _summarize_tool_argument(value)) for key, value in kwargs.items())
     return details
+
+
+def _summarize_tool_argument(value, max_length: int = 80) -> str:
+    if isinstance(value, str):
+        had_multiple_lines = "\n" in value
+        text = " ".join(value.splitlines())
+        if had_multiple_lines and len(text) <= max_length - 3:
+            return text + "..."
+    else:
+        try:
+            text = json.dumps(value, ensure_ascii=False)
+        except TypeError:
+            text = str(value)
+    if len(text) > max_length:
+        return text[: max_length - 3] + "..."
+    if "\n" in text:
+        return text.replace("\n", " ") + "..."
+    return text
 
 
 def _flatten_tool_call_arguments(value, prefix: str = "") -> list[tuple[str, object]]:
@@ -930,6 +978,12 @@ def _render_to_plain_text(value, width: int = 80) -> str:
     with render_console.capture() as capture:
         render_console.print(value)
     return capture.get().rstrip("\n")
+
+
+def _normalize_history_value(value):
+    if isinstance(value, str):
+        return Text.from_markup(value).plain
+    return value
 
 
 def _render_markdown_to_plain_text(text: str, width: int | None = None) -> str:
@@ -1893,7 +1947,7 @@ class _ReadlineInput:
 
         if self._busy:
             buff.text = ""
-            self._print_ui("[yellow]A run is still in progress.[/yellow]")
+            self._print_ui("A run is still in progress.")
             return
 
         self.history.append_string(text)
@@ -1974,7 +2028,7 @@ class _ReadlineInput:
                 return
             if self._active_cancel_event is not None and not self._active_cancel_event.is_set():
                 self._active_cancel_event.set()
-                self._print_ui("[yellow]Interrupt requested...[/yellow]")
+                self._print_ui("Interrupt requested...")
 
         return key_bindings
 
@@ -2128,7 +2182,7 @@ class _ReadlineInput:
         self._append_history_item_ui(
             "system",
             "plain",
-            _render_to_plain_text(value, width=self._history_render_width()),
+            _render_to_plain_text(_normalize_history_value(value), width=self._history_render_width()),
         )
 
     def _print_startup_ui(self, value):
@@ -2136,7 +2190,7 @@ class _ReadlineInput:
         self._append_history_item_ui(
             "startup",
             "plain",
-            _render_to_plain_text(value, width=self._history_render_width()),
+            _render_to_plain_text(_normalize_history_value(value), width=self._history_render_width()),
         )
 
     def _write_ui(self, text: str):
@@ -2246,7 +2300,8 @@ class _ReadlineInput:
                 if previous_item is not None and previous_item.role == "system" and item.role == "tool":
                     separator = "\n"
                 parts.append(separator)
-                line_metadata.append({})
+                blank_line_count = max(separator.count("\n") - 1, 0)
+                line_metadata.extend({} for _ in range(blank_line_count))
 
             parts.append(rendered)
             line_metadata.extend(_build_history_line_metadata(item, rendered))
@@ -2476,6 +2531,7 @@ class _LiveToolOutputRenderer:
 def _run_agent_with_escape_interrupt(
     agent: Agent,
     user_input: str,
+    mode: str = "normal",
     on_token=None,
     on_tool=None,
     on_tool_output=None,
@@ -2512,6 +2568,7 @@ def _run_agent_with_escape_interrupt(
                         ask_user,
                     )
                     agent.on_brief_message = _guard(on_brief)
+                    agent.tool_output_handler = _guard(on_tool_output)
                     chat_kwargs = {
                         "on_token": _guard(on_token),
                         "on_tool": _guard(on_tool),
@@ -2522,9 +2579,11 @@ def _run_agent_with_escape_interrupt(
 
                     result["response"] = agent.chat(
                         user_input,
+                        mode=mode,
                         **chat_kwargs,
                     )
             else:
+                agent.tool_output_handler = _guard(on_tool_output)
                 chat_kwargs = {
                     "on_token": _guard(on_token),
                     "on_tool": _guard(on_tool),
@@ -2535,6 +2594,7 @@ def _run_agent_with_escape_interrupt(
 
                 result["response"] = agent.chat(
                     user_input,
+                    mode=mode,
                     **chat_kwargs,
                 )
         except BaseException as exc:  # pragma: no cover

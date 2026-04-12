@@ -34,10 +34,19 @@ TIME_DESCRIPTION = (
 )
 RATE_LIMIT_PER_SECOND = 3
 MIN_REQUEST_INTERVAL_SECONDS = 1.0 / RATE_LIMIT_PER_SECOND
+MAX_TIME_RANGE_SECONDS = 90 * 24 * 60 * 60
 
 
 class ChainbaseAPIError(RuntimeError):
     """Raised when the Chainbase token APIs return an error."""
+
+
+def validate_time_range(start_time: int, end_time: int) -> str | None:
+    if end_time < start_time:
+        return "Error: end_time must be greater than or equal to start_time"
+    if end_time - start_time > MAX_TIME_RANGE_SECONDS:
+        return "Error: start_time and end_time must be within 90 days"
+    return None
 
 
 def _load_api_key() -> str:
@@ -249,6 +258,9 @@ Returns current price (USD), historical price points (USD), and top holders.
     _parent_agent = None
 
     def execute(self, token_address: str, chain_id: int, start_time: int, end_time: int) -> str:
+        time_range_error = validate_time_range(start_time, end_time)
+        if time_range_error:
+            return time_range_error
         api_key = _load_api_key()
         if not api_key:
             raise ValueError("CHAINBASE_API_KEY is required")

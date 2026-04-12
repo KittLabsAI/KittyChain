@@ -26,3 +26,5 @@ task_plan.md
 tests/test_prompt.md
 docs/superpowers
 demo/
+reports/
+lib/

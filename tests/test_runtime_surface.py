@@ -10,6 +10,7 @@ import kittychain.cli as cli
 import kittychain.llm.provider as provider
 import kittychain.prompt.builder as prompt_builder
 import kittychain.runtime.agent as agent_module
+from kittychain.llm.provider import ToolCall
 import kittychain.skills.discovery as skill_discovery
 import kittychain.tools.skill as skill_tool
 from kittychain import Agent, Config, LLM
@@ -405,3 +406,212 @@ def test_history_style_processor_preserves_selection_for_assistant_markdown():
     )
 
     assert any("selected" in style for style, _text, *_rest in transformed.fragments)
+
+
+def test_tool_role_uses_gray_history_style():
+    attrs = cli._APP_STYLE.get_attrs_for_style_str("class:history.tool")
+
+    assert attrs.color == "888888"
+
+
+def test_render_message_to_text_for_tool_shows_only_tool_body():
+    rendered = cli.render_message_to_text("tool", "plain", "Browser summary")
+
+    assert rendered == "Browser summary"
+
+
+def test_history_renders_tool_result_without_blank_line_before_it(tmp_path):
+    reader = cli._ReadlineInput(
+        str(tmp_path / "history"),
+        lambda: [],
+    )
+
+    reader._append_history_item_ui("system", "plain", "Tool call details")
+    reader.write_raw("Browser summary", role="tool", kind="plain")
+    reader.finalize_active_output()
+
+    assert "Tool call details\nBrowser summary" in reader.history_buffer.text
+    assert "Tool call details\n\nBrowser summary" not in reader.history_buffer.text
+
+
+def test_repl_streams_web_browser_tool_output_only(monkeypatch):
+    outputs = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["scan address", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            outputs.append(("startup", value))
+
+        def print(self, value):
+            outputs.append(("print", value))
+
+        def write_raw(self, text, role="assistant", kind="plain"):
+            outputs.append(("write_raw", text, role, kind))
+
+        def finalize_active_output(self):
+            return None
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+
+    def fake_run_agent_with_escape_interrupt(
+        agent,
+        user_input,
+        on_token=None,
+        on_tool=None,
+        on_tool_output=None,
+        **kwargs,
+    ):
+        on_tool("web_browser", {"url": "https://example.com", "prompt": "scan"})
+        on_tool_output("web_browser", "Browser summary")
+        on_tool("bash", {"command": "pwd"})
+        on_tool_output("bash", "shell output")
+        return "", False, agent
+
+    monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
+
+    cli._repl(fake_agent, fake_config)
+
+    assert ("write_raw", "Browser summary", "tool", "plain") in outputs
+    assert ("write_raw", "shell output", "tool", "plain") not in outputs
+
+
+def test_repl_truncates_web_browser_tool_output_to_first_five_lines(monkeypatch):
+    outputs = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["scan address", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            outputs.append(("startup", value))
+
+        def print(self, value):
+            outputs.append(("print", value))
+
+        def write_raw(self, text, role="assistant", kind="plain"):
+            outputs.append(("write_raw", text, role, kind))
+
+        def finalize_active_output(self):
+            return None
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+
+    def fake_run_agent_with_escape_interrupt(
+        agent,
+        user_input,
+        on_token=None,
+        on_tool=None,
+        on_tool_output=None,
+        **kwargs,
+    ):
+        on_tool("web_browser", {"url": "https://example.com", "prompt": "scan"})
+        on_tool_output("web_browser", "1\n2\n3\n4\n5\n6\n7")
+        return "", False, agent
+
+    monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
+
+    cli._repl(fake_agent, fake_config)
+
+    assert ("write_raw", "1\n2\n3\n4\n5", "tool", "plain") in outputs
+
+
+def test_agent_emits_web_browser_result_to_tool_output_callback():
+    class FakeLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def chat(self, messages, tools=None, on_token=None, cancel_event=None):
+            self.calls += 1
+            if self.calls == 1:
+                return provider.LLMResponse(
+                    content="",
+                    tool_calls=[ToolCall(id="tool-1", name="web_browser", arguments={"url": "https://example.com"})],
+                )
+            return provider.LLMResponse(content="done")
+
+    class FakeTool:
+        name = "web_browser"
+        description = "Fetches browser content"
+        parameters = {}
+
+        def bind_agent(self, agent):
+            self.agent = agent
+
+        def schema(self):
+            return {
+                "type": "function",
+                "function": {"name": self.name, "description": self.description, "parameters": self.parameters},
+            }
+
+        def execute(self, url):
+            return "Browser summary"
+
+    agent = agent_module.Agent(llm=FakeLLM(), tools=[FakeTool()])
+    seen = []
+
+    response = agent.chat("scan", on_tool_output=lambda name, text: seen.append((name, text)))
+
+    assert response == "done"
+    assert seen == [("web_browser", "Browser summary")]

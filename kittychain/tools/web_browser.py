@@ -15,8 +15,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # type: ignore
+    from llm.provider import _strip_think_blocks  # type: ignore
 else:
     from .base import Tool
+    from ..llm.provider import _strip_think_blocks
 
 
 class WebBrowserTool(Tool):
@@ -63,25 +65,31 @@ against a prompt. Use this to inspect current web pages or text endpoints.
         normalized = _normalize_url(url)
         session = f"web-browser-{uuid.uuid4().hex}"
         try:
-            _run_agent_browser(session, timeout, "open", normalized)
-            _run_agent_browser(session, timeout, "wait", "--load", "networkidle")
-            current_url = _run_agent_browser(session, timeout, "get", "url")
-            text = _run_agent_browser(
-                session,
-                timeout,
-                "eval",
-                "document.body ? (document.body.innerText || '') : "
-                "(document.documentElement ? (document.documentElement.innerText || '') : '')",
-            )
-            status_code = _fetch_status_code(session, timeout)
+            try:
+                _run_agent_browser(session, timeout, "open", normalized)
+                _run_agent_browser(session, timeout, "wait", "--load", "networkidle")
+                current_url = _run_agent_browser(session, timeout, "get", "url")
+                text = _run_agent_browser(
+                    session,
+                    timeout,
+                    "eval",
+                    "document.body ? (document.body.innerText || '') : "
+                    "(document.documentElement ? (document.documentElement.innerText || '') : '')",
+                )
+                status_code = _fetch_status_code(session, timeout)
+            except RuntimeError as exc:
+                if "timed out" in str(exc).lower():
+                    return "Timed out, please try again."
+                raise
         finally:
             _close_session(session, timeout)
-        lines = [f"Fetched: {current_url or normalized}", f"Status: {status_code}", ""]
-        if prompt.strip():
-            lines.append(f"Prompt: {prompt.strip()}")
-            lines.append("")
-        lines.append(text.strip())
-        return "\n".join(lines)
+        return _summarize_with_llm(
+            agent=getattr(self, "_parent_agent", None),
+            url=current_url or normalized,
+            status_code=status_code,
+            prompt=prompt,
+            page_text=text,
+        )
 
 
 def _run_agent_browser(session: str, timeout: int, *args: str) -> str:
@@ -152,9 +160,42 @@ def _normalize_url(url: str) -> str:
     return parsed.geturl()
 
 
-def main(url: str) -> int:
+def _summarize_with_llm(agent, url: str, status_code: int | str, prompt: str, page_text: str) -> str:
+    llm = getattr(agent, "llm", None)
+    if llm is None or not hasattr(llm, "complete"):
+        lines = [f"Fetched: {url}", f"Status: {status_code}", ""]
+        if prompt.strip():
+            lines.append(f"Prompt: {prompt.strip()}")
+            lines.append("")
+        lines.append(page_text.strip())
+        return "\n".join(lines)
+
+    worker = llm.clone() if hasattr(llm, "clone") else llm
+    message = {
+        "role": "user",
+        "content": (
+            f"Prompt:\n{prompt.strip() or 'Summarize the page content.'}\n\n"
+            f"Fetched URL: {url}\n"
+            f"Status: {status_code}\n\n"
+            f"Page content:\n{page_text.strip()}"
+        ),
+    }
+    response = worker.complete(
+        [message],
+        system=(
+            "Return a brief summary of the page that answers the prompt, "
+            "followed by a brief next-step suggestion."
+        ),
+    )
+    return _strip_think_blocks((response.content or "").strip())
+
+
+def main(url: str, agent=None) -> int:
     try:
-        output = WebBrowserTool().execute(url)
+        tool = WebBrowserTool()
+        if agent is not None:
+            tool.bind_agent(agent)
+        output = tool.execute(url)
     except Exception as exc:
         output = f"Error: {exc}"
     print(output)

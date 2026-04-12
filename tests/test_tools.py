@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from requests import HTTPError
@@ -948,6 +949,16 @@ class ToolsTests(unittest.TestCase):
                 self.stderr = ""
                 self.returncode = 0
 
+        class FakeLLM:
+            def complete(self, messages, **kwargs):
+                self.messages = messages
+                self.kwargs = kwargs
+                return SimpleNamespace(content="Summarized browser content")
+
+        class FakeAgent:
+            def __init__(self):
+                self.llm = FakeLLM()
+
         calls = []
         outputs = iter(
             [
@@ -969,14 +980,123 @@ class ToolsTests(unittest.TestCase):
             web_browser_module.subprocess.run = fake_run
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                exit_code = web_browser_module.main("https://example.com")
+                exit_code = web_browser_module.main("https://example.com", agent=FakeAgent())
         finally:
             web_browser_module.subprocess.run = original_run
         self.assertEqual(exit_code, 0)
-        self.assertIn("Fetched: https://example.com", buffer.getvalue())
-        self.assertIn("Status: 200", buffer.getvalue())
-        self.assertIn("Hello from browser", buffer.getvalue())
+        self.assertIn("Summarized browser content", buffer.getvalue())
         self.assertEqual(calls[0][-2:], ["open", "https://example.com"])
+
+    def test_web_browser_execute_summarizes_page_text_with_agent_llm(self):
+        class FakeCompleted:
+            def __init__(self, stdout):
+                self.stdout = stdout
+                self.stderr = ""
+                self.returncode = 0
+
+        class FakeLLM:
+            def __init__(self):
+                self.complete_calls = []
+
+            def clone(self):
+                return self
+
+            def complete(self, messages, **kwargs):
+                self.complete_calls.append((messages, kwargs))
+                return SimpleNamespace(content="Entity summary")
+
+        class FakeAgent:
+            def __init__(self):
+                self.llm = FakeLLM()
+
+        outputs = iter(
+            [
+                FakeCompleted(""),
+                FakeCompleted(""),
+                FakeCompleted("https://example.com/risk"),
+                FakeCompleted("Page body text"),
+                FakeCompleted('[{"status": 200}]'),
+                FakeCompleted(""),
+            ]
+        )
+
+        original_run = web_browser_module.subprocess.run
+        tool = web_browser_module.WebBrowserTool()
+        tool.bind_agent(FakeAgent())
+        try:
+            web_browser_module.subprocess.run = lambda *args, **kwargs: next(outputs)
+            result = tool.execute("https://example.com", "extract counterparties", 20)
+        finally:
+            web_browser_module.subprocess.run = original_run
+
+        self.assertEqual(result, "Entity summary")
+        llm = tool._parent_agent.llm
+        self.assertEqual(len(llm.complete_calls), 1)
+        messages, kwargs = llm.complete_calls[0]
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0]["role"], "user")
+        self.assertIn("extract counterparties", messages[0]["content"])
+        self.assertIn("Page body text", messages[0]["content"])
+        self.assertIn("brief summary", kwargs["system"].lower())
+        self.assertIn("next-step suggestion", kwargs["system"].lower())
+
+    def test_web_browser_execute_filters_think_blocks_from_summary(self):
+        class FakeCompleted:
+            def __init__(self, stdout):
+                self.stdout = stdout
+                self.stderr = ""
+                self.returncode = 0
+
+        class FakeLLM:
+            def clone(self):
+                return self
+
+            def complete(self, messages, **kwargs):
+                return SimpleNamespace(content="visible<think>hidden</think>done")
+
+        class FakeAgent:
+            def __init__(self):
+                self.llm = FakeLLM()
+
+        outputs = iter(
+            [
+                FakeCompleted(""),
+                FakeCompleted(""),
+                FakeCompleted("https://example.com/risk"),
+                FakeCompleted("Page body text"),
+                FakeCompleted('[{"status": 200}]'),
+                FakeCompleted(""),
+            ]
+        )
+
+        original_run = web_browser_module.subprocess.run
+        tool = web_browser_module.WebBrowserTool()
+        tool.bind_agent(FakeAgent())
+        try:
+            web_browser_module.subprocess.run = lambda *args, **kwargs: next(outputs)
+            result = tool.execute("https://example.com", "summarize", 20)
+        finally:
+            web_browser_module.subprocess.run = original_run
+
+        self.assertEqual(result, "visibledone")
+
+    def test_web_browser_execute_returns_retry_message_on_timeout(self):
+        class FakeAgent:
+            llm = None
+
+        original_run = web_browser_module.subprocess.run
+        tool = web_browser_module.WebBrowserTool()
+        tool.bind_agent(FakeAgent())
+        try:
+            def fake_run(*args, **kwargs):
+                raise subprocess.TimeoutExpired(cmd=args[0], timeout=20)
+
+            web_browser_module.subprocess.run = fake_run
+            result = tool.execute("https://example.com", "summarize", 20)
+        finally:
+            web_browser_module.subprocess.run = original_run
+
+        self.assertEqual(result, "Timed out, please try again.")
 
     def test_web_search_main_prints_results(self):
         class FakeResponse:

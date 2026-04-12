@@ -130,7 +130,7 @@ _APP_STYLE = Style.from_dict(
         "history.user": "fg:#27cd96",
         "history.assistant": "fg:#d68786",
         "history.assistant.label": "bold",
-        "history.tool": "fg:#56b6c2",
+        "history.tool": "fg:#888888",
         "footer": "fg:#d68786",
         "footer.label": "fg:#d68786 bold",
         "history.markdown.heading1": "bold underline",
@@ -492,6 +492,12 @@ def _repl(agent: Agent, config: Config):
             for line in _render_brief_attachments(payload):
                 input_reader.print(line)
 
+        def on_tool_output(name, text):
+            if name != "web_browser" or not text:
+                return
+            assistant_stream.finish()
+            input_reader.write_raw(_truncate_web_browser_output(text), role="tool", kind="plain")
+
         cancel_event = threading.Event()
         input_reader.attach_cancel_event(cancel_event)
 
@@ -501,6 +507,7 @@ def _repl(agent: Agent, config: Config):
                 user_input,
                 on_token=on_token,
                 on_tool=on_tool,
+                on_tool_output=on_tool_output,
                 ask_user=lambda questions: _ask_user_questions(input_reader, questions),
                 on_brief=on_brief,
                 cancel_event=cancel_event,
@@ -960,6 +967,13 @@ def _filter_think_display_text(text: str) -> str:
         index += 1
 
     return "".join(visible)
+
+
+def _truncate_web_browser_output(text: str, max_lines: int = 5) -> str:
+    if not text:
+        return ""
+    lines = text.splitlines()
+    return "\n".join(lines[:max_lines])
 
 
 def _render_markdown(text: str):
@@ -1641,7 +1655,6 @@ def render_message_to_text(role: str, kind: str, text: str, width: int = 80) -> 
             else:
                 render_console.print(Text(body))
         elif role == "tool":
-            render_console.print("Tool Output")
             render_console.print(Text(body))
         else:
             if kind == "markdown":
@@ -2216,6 +2229,7 @@ class _ReadlineInput:
         width = self._history_render_width()
         parts: list[str] = []
         line_metadata: list[dict[str, object]] = []
+        previous_item: _HistoryItem | None = None
 
         for index, item in enumerate(items):
             if not item.text:
@@ -2228,11 +2242,15 @@ class _ReadlineInput:
                 width=width,
             )
             if index > 0:
-                parts.append("\n\n")
+                separator = "\n\n"
+                if previous_item is not None and previous_item.role == "system" and item.role == "tool":
+                    separator = "\n"
+                parts.append(separator)
                 line_metadata.append({})
 
             parts.append(rendered)
             line_metadata.extend(_build_history_line_metadata(item, rendered))
+            previous_item = item
 
         text = "".join(parts)
         self._history_line_metadata = line_metadata or [{}]

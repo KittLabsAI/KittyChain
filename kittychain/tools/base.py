@@ -15,8 +15,7 @@ class Tool(ABC):
         """Run the tool and return a text result."""
 
     def bind_agent(self, agent) -> None:
-        if hasattr(self, "_parent_agent"):
-            self._parent_agent = agent
+        self._parent_agent = agent
 
     def schema(self) -> dict:
         description = self.description.strip()

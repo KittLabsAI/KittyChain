@@ -321,11 +321,16 @@ class Agent:
         try:
             execute_kwargs = dict(tool_call.arguments)
             parameters = inspect.signature(tool.execute).parameters
+            streamed_output = False
             if on_output is not None and "stream_callback" in parameters:
                 execute_kwargs["stream_callback"] = lambda text: on_output(tool_call.name, text)
+                streamed_output = True
             if cancel_event is not None and "cancel_event" in parameters:
                 execute_kwargs["cancel_event"] = cancel_event
-            return tool.execute(**execute_kwargs)
+            result = tool.execute(**execute_kwargs)
+            if on_output is not None and tool_call.name == "web_browser" and not streamed_output and result:
+                on_output(tool_call.name, result)
+            return result
         except TypeError as exc:
             return f"Error: bad arguments for {tool_call.name}: {exc}"
         except Exception as exc:

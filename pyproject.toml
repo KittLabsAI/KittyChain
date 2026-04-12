@@ -20,6 +20,7 @@ dependencies = [
     "dune-client>=1.10.0",
     "goplus>=0.2.5",
     "openai>=1.0",
+    "pyvis>=0.3.2",
     "prompt_toolkit>=3.0",
     "requests>=2.31",
     "rich>=13.0",

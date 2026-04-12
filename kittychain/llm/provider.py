@@ -144,6 +144,22 @@ class LLM:
 
         return self._chat_openai(messages, tools=tools, on_token=on_token, cancel_event=cancel_event)
 
+    def complete(
+        self,
+        messages: list[dict],
+        *,
+        system: str = "",
+        cancel_event=None,
+    ) -> LLMResponse:
+        request_messages = list(messages)
+        if system:
+            request_messages = [{"role": "system", "content": system}] + request_messages
+
+        if self.interface == "anthropic":
+            return self._complete_anthropic(request_messages, cancel_event=cancel_event)
+
+        return self._complete_openai(request_messages, cancel_event=cancel_event)
+
     def _chat_openai(
         self,
         messages: list[dict],
@@ -164,6 +180,29 @@ class LLM:
         stream = self._call_openai_stream(params, cancel_event=cancel_event)
         _raise_if_cancelled(cancel_event)
         response = _openai_stream_to_response(stream, on_token=on_token, cancel_event=cancel_event)
+        self.total_prompt_tokens += response.prompt_tokens
+        self.total_completion_tokens += response.completion_tokens
+        self.total_prompt_cache_tokens += response.prompt_cache_tokens
+        self.total_completion_cache_tokens += response.completion_cache_tokens
+        self.total_prompt_uncache_tokens += response.prompt_uncache_tokens
+        self.total_completion_uncache_tokens += response.completion_uncache_tokens
+        return response
+
+    def _complete_openai(
+        self,
+        messages: list[dict],
+        cancel_event=None,
+    ) -> LLMResponse:
+        _raise_if_cancelled(cancel_event)
+        params: dict = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False,
+            **self.extra,
+        }
+        completion = self._call_with_retry(params, cancel_event=cancel_event)
+        _raise_if_cancelled(cancel_event)
+        response = _openai_completion_to_response(completion)
         self.total_prompt_tokens += response.prompt_tokens
         self.total_completion_tokens += response.completion_tokens
         self.total_prompt_cache_tokens += response.prompt_cache_tokens
@@ -216,6 +255,36 @@ class LLM:
         self.total_completion_uncache_tokens += response.completion_uncache_tokens
         return response
 
+    def _complete_anthropic(
+        self,
+        messages: list[dict],
+        cancel_event=None,
+    ) -> LLMResponse:
+        _raise_if_cancelled(cancel_event)
+        system_message, conversation = _extract_system_message(messages)
+        params: dict = {
+            "model": self.model,
+            "messages": _to_anthropic_messages(conversation),
+            "max_tokens": int(self.extra.get("max_tokens", 4096)),
+        }
+        temperature = self.extra.get("temperature")
+        if temperature is not None:
+            params["temperature"] = temperature
+        if system_message:
+            params["system"] = system_message
+        params["cache_control"] = {"type": "ephemeral"}
+
+        message = self._call_anthropic_completion_with_retry(params, cancel_event=cancel_event)
+        _raise_if_cancelled(cancel_event)
+        response = _anthropic_message_to_response(message)
+        self.total_prompt_tokens += response.prompt_tokens
+        self.total_completion_tokens += response.completion_tokens
+        self.total_prompt_cache_tokens += response.prompt_cache_tokens
+        self.total_completion_cache_tokens += response.completion_cache_tokens
+        self.total_prompt_uncache_tokens += response.prompt_uncache_tokens
+        self.total_completion_uncache_tokens += response.completion_uncache_tokens
+        return response
+
     def _call_with_retry(self, params: dict, max_retries: int = 3, cancel_event=None):
         for attempt in range(max_retries):
             try:
@@ -235,6 +304,22 @@ class LLM:
             try:
                 with self.client.messages.stream(**params) as stream:
                     return _consume_anthropic_stream(stream, on_token=on_token, cancel_event=cancel_event)
+            except (anthropic.RateLimitError, anthropic.APITimeoutError, anthropic.APIConnectionError):
+                if attempt == max_retries - 1:
+                    raise
+                _sleep_until_retry_or_cancel(2 ** attempt, cancel_event)
+            except anthropic.APIError as exc:
+                status_code = getattr(exc, "status_code", None)
+                if status_code and status_code >= 500 and attempt < max_retries - 1:
+                    _sleep_until_retry_or_cancel(2 ** attempt, cancel_event)
+                else:
+                    raise
+
+    def _call_anthropic_completion_with_retry(self, params: dict, max_retries: int = 3, cancel_event=None):
+        for attempt in range(max_retries):
+            try:
+                _raise_if_cancelled(cancel_event)
+                return self.client.messages.create(**params)
             except (anthropic.RateLimitError, anthropic.APITimeoutError, anthropic.APIConnectionError):
                 if attempt == max_retries - 1:
                     raise

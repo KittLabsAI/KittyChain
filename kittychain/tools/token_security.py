@@ -270,7 +270,7 @@ class TokenSecurityTool(Tool):
 Check token security and risk data using GoPlus.
 Returns security information, holders, LP holders, and DEX information.
 # Important Notes
-- After calling this tool, check the top holders with address_mallicious.
+- After calling this tool, check the top holders with address_malicious.
 - After calling this tool, always use web_browser tool to verify the token information.
     """
     parameters = {

@@ -10,7 +10,7 @@ from .ask_user import AskUserTool
 from .address_balance import AddressBalanceTool
 from .address_identity import AddressIdentityTool
 from .address_labels import AddressLabelsTool
-from .address_mallicious import AddressMalliciousTool
+from .address_mallicious import AddressMaliciousTool, AddressMalliciousTool
 from .address_pattern import AddressPatternTool
 from .address_transfers import AddressTransfersTool
 from .bash import BashTool
@@ -19,6 +19,7 @@ from .edit import EditTool
 from .glob import GlobTool
 from .grep import GrepTool
 from .read import ReadTool
+from .social_search import SocialSearchTool
 from .skill import SkillTool
 from .token_info import TokenInfoTool
 from .token_security import TokenSecurityTool
@@ -30,6 +31,7 @@ from .write import WriteTool
 _TOOL_TYPES = [
     BashTool,
     ReadTool,
+    SocialSearchTool,
     WriteTool,
     EditTool,
     GlobTool,
@@ -44,7 +46,7 @@ _TOOL_TYPES = [
     AddressBalanceTool,
     AddressIdentityTool,
     AddressLabelsTool,
-    AddressMalliciousTool,
+    AddressMaliciousTool,
     AddressPatternTool,
     AddressTransfersTool,
     TokenInfoTool,
@@ -73,6 +75,7 @@ __all__ = [
     "AddressBalanceTool",
     "AddressIdentityTool",
     "AddressLabelsTool",
+    "AddressMaliciousTool",
     "AddressMalliciousTool",
     "AddressPatternTool",
     "AddressTransfersTool",
@@ -82,6 +85,7 @@ __all__ = [
     "GlobTool",
     "GrepTool",
     "ReadTool",
+    "SocialSearchTool",
     "SkillTool",
     "TokenInfoTool",
     "TokenSecurityTool",

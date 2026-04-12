@@ -26,7 +26,7 @@ class WebSearchTool(Tool):
 Search the public web for current information and return result links with
 snippets. Use this when you need fresh external sources.
 # Important Notes
-- If unable to find information through this tool, use `last30days` tool to search for recent information through social media.
+- If unable to find information through this tool, use `social_search` tool to search for recent information through social media.
     """
     parameters = {
         "type": "object",

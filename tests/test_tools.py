@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from requests import HTTPError
 from requests.exceptions import RetryError
@@ -24,6 +25,7 @@ import kittychain.tools.edit as edit_module
 import kittychain.tools.glob as glob_module
 import kittychain.tools.grep as grep_module
 import kittychain.tools.read as read_module
+import kittychain.tools.social_search as social_search_module
 import kittychain.tools.skill as skill_module
 import kittychain.tools.token_info as token_info_module
 import kittychain.tools.token_security as token_security_module
@@ -88,6 +90,14 @@ class ToolsTests(unittest.TestCase):
         self.assertIsNotNone(tool)
         self.assertEqual(tool.name, "address_pattern")
 
+    def test_address_malicious_tool_is_registered(self):
+        from kittychain.tools import get_tool
+
+        tool = get_tool("address_malicious")
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "address_malicious")
+
     def test_web_browser_tool_is_registered_and_web_fetch_is_not(self):
         from kittychain.tools import get_tool
 
@@ -96,6 +106,37 @@ class ToolsTests(unittest.TestCase):
         self.assertIsNotNone(tool)
         self.assertEqual(tool.name, "web_browser")
         self.assertIsNone(get_tool("web_fetch"))
+
+    def test_social_search_tool_is_registered(self):
+        from kittychain.tools import get_tool
+
+        tool = get_tool("social_search")
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "social_search")
+
+    def test_social_search_tool_requires_query_lookback_days_and_depth(self):
+        self.assertEqual(
+            social_search_module.SocialSearchTool.parameters["required"],
+            ["query", "lookback_days", "depth"],
+        )
+
+    def test_social_search_execute_combines_default_sources_and_reports_x_status(self):
+        tool = social_search_module.SocialSearchTool()
+
+        with (
+            patch.object(social_search_module, "_search_reddit", return_value=[{"title": "Reddit thread"}]),
+            patch.object(social_search_module, "_search_hackernews", return_value=[{"title": "HN post"}]),
+            patch.object(social_search_module, "_search_polymarket", return_value=[{"title": "PM market"}]),
+            patch.object(social_search_module, "_search_x", return_value={"available": False, "items": [], "reason": "AUTH_TOKEN/CT0 not configured"}),
+        ):
+            output = tool.execute(query="kittychian", lookback_days=30, depth="quick")
+
+        self.assertIn('Social search results for "kittychian"', output)
+        self.assertIn("reddit: 1 result", output)
+        self.assertIn("hackernews: 1 result", output)
+        self.assertIn("polymarket: 1 result", output)
+        self.assertIn("x: unavailable (AUTH_TOKEN/CT0 not configured)", output)
 
     def test_infer_possible_chains_handles_known_formats_and_added_networks(self):
         self.assertEqual(
@@ -592,7 +633,7 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("address_transfers", address_mallicious_module.AddressMalliciousTool.description)
 
         self.assertIn("3-5", address_transfers_module.AddressTransfersTool.description)
-        self.assertIn("address_mallicious", address_transfers_module.AddressTransfersTool.description)
+        self.assertIn("address_malicious", address_transfers_module.AddressTransfersTool.description)
         self.assertIn("address_pattern", address_transfers_module.AddressTransfersTool.description)
 
         self.assertIn("address_pattern", address_balance_module.AddressBalanceTool.description)
@@ -604,10 +645,10 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("比较慢", address_identity_module.AddressIdentityTool.description)
         self.assertIn("CEX", address_identity_module.AddressIdentityTool.description)
         self.assertIn("ask_user", address_identity_module.AddressIdentityTool.description)
-        self.assertIn("address_mallicious", address_identity_module.AddressIdentityTool.description)
+        self.assertIn("address_malicious", address_identity_module.AddressIdentityTool.description)
 
         self.assertIn("top holders", token_info_module.TokenInfoTool.description)
-        self.assertIn("address_mallicious", token_info_module.TokenInfoTool.description)
+        self.assertIn("address_malicious", token_info_module.TokenInfoTool.description)
 
         self.assertIn("progress updates", brief_module.BriefTool.description)
 

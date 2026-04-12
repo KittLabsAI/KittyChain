@@ -63,12 +63,12 @@ def test_system_prompt_includes_onchain_lookup_rules():
 
     assert "# On-chain lookup checks" in system
     assert "address_pattern" in system
-    assert "address_mallicious" in system
+    assert "address_malicious" in system
     assert "address_transfers" in system
     assert "address_identity" in system
     assert "token_info" in system
     assert "https://www.oklink.com/" in system
-    assert "web_search and the last30days skill" in system
+    assert "web_search` and the `social_search` tool" in system
 
 
 def test_system_prompt_includes_user_facing_output_rules():

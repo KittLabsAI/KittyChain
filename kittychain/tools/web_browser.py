@@ -24,11 +24,19 @@ class WebBrowserTool(Tool):
     description = """
 Fetch content from a public URL through a real browser, extract readable text, and summarize it
 against a prompt. Use this to inspect current web pages or text endpoints.
+
 # Important Notes
-- Always use this after calling other tools like address_malicious to verify their results by fetching relevant web pages.
-- `https://www.oklink.com/` or `https://www.blockchain.com/explorer` for addresses, transactions, and token information by token address.
-- `https://solscan.io/` for Solana addresses and transactions.
-- `https://suivision.xyz/` or `https://suiscan.xyz/mainnet/home` for Sui addresses and transactions.
+- ALWAYS use this after calling other tools like address_malicious to verify their results by fetching relevant web pages.
+- If this tool is unavailable or fails, use `agent-browser` tool.
+- ALWAYS try to get relevant counterparties or entities from webpage.
+- After calling this tool, if find relevant addresses, ALWAYS check the 3-5 most frequently interacting addresses with `address_malicious` and `web_browser`.
+- If timeout, try again with a longer timeout.
+
+# Important Webpage
+- `https://www.oklink.com/` or `https://www.blockchain.com/explorer` for all public chains.
+- `https://etherscan.io/` for Ethereum-compatible chains.
+- `https://solscan.io/` for Solana.
+- `https://suiscan.xyz/mainnet/home` or `https://sui.explorers.guru/` for Sui.
 - `https://coinmarketcap.com/` for market information.
 - `https://tokenvitals.com/` for token information by token name.
     """
@@ -45,7 +53,7 @@ against a prompt. Use this to inspect current web pages or text endpoints.
             },
             "timeout": {
                 "type": "integer",
-                "description": "Timeout in seconds (default 20)",
+                "description": "Timeout in seconds (default 120)",
             },
         },
         "required": ["url", "prompt", "timeout"],

@@ -220,7 +220,7 @@ class TokenInfoTool(Tool):
 Look up Chainbase token data for a token contract on a specific chain and time range.
 Returns current price (USD), historical price points (USD), and top holders.
 # Important Notes
-- After calling this tool, check the top holders with address_mallicious.
+- After calling this tool, check the top holders with address_malicious.
 - After calling this tool, always use web_browser tool to verify the token information.
     """
     parameters = {

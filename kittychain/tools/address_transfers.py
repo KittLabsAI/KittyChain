@@ -191,7 +191,7 @@ Before calling this tool, call address_pattern first to determine candidate chai
 Pass those candidate chain names through the required networks field.
 Returns aggregated transfer data grouped by network, direction, counterparty, and asset.
 # Important Notes
-- After calling this tool, inspect the 3-5 most frequent counterparties and check each one with address_mallicious.
+- After calling this tool, inspect the 3-5 most frequent counterparties and check each one with address_malicious.
     """
     parameters = {
         "type": "object",

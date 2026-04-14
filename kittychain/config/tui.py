@@ -12,6 +12,7 @@ from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.shortcuts import button_dialog, input_dialog, message_dialog, radiolist_dialog
+from prompt_toolkit.widgets import Box, Button, Dialog, Label, TextArea
 from prompt_toolkit.styles import Style
 
 from .presets import PROVIDER_PRESETS, get_provider_preset
@@ -163,6 +164,7 @@ def render_api_summary(apis: ApiConfig) -> str:
             f"GoPlus API Secret: {mask_secret(apis.goplus_api_secret)}",
             f"Alchemy API Key: {mask_secret(apis.alchemy_api_key)}",
             f"Chainbase API Key: {mask_secret(apis.chainbase_api_key)}",
+            f"CoinGecko API Key: {mask_secret(apis.coingecko_api_key)}",
         ]
     )
 
@@ -260,28 +262,63 @@ def _select_model_index(models: list[ConfigTUIModel]) -> int | None:
     ).run()
 
 
-def _edit_apis(existing: ApiConfig) -> ApiConfig | None:
-    dune_api_key = _prompt_text("API Config", "Dune API Key", existing.dune_api_key)
-    if dune_api_key is None:
+def _prompt_api_form(title: str, fields: tuple[str, ...], defaults: tuple[str, ...]) -> tuple[str, ...] | None:
+    values = list(defaults)
+    editors = [TextArea(text=default, multiline=False) for default in defaults]
+    result: dict[str, tuple[str, ...] | None] = {"value": None}
+
+    def _save() -> None:
+        result["value"] = tuple(editor.text for editor in editors)
+        application.exit()
+
+    def _cancel() -> None:
+        result["value"] = None
+        application.exit()
+
+    body_children = []
+    for label, editor in zip(fields, editors):
+        body_children.append(Label(text=label))
+        body_children.append(editor)
+
+    dialog = Dialog(
+        title=title,
+        body=HSplit(body_children, padding=1),
+        buttons=[Button(text="Save", handler=_save), Button(text="Cancel", handler=_cancel)],
+        with_background=True,
+    )
+    application = Application(layout=Layout(dialog), full_screen=False, style=_APP_STYLE)
+    application.run()
+    return result["value"]
+
+
+def _edit_apis(existing: ApiConfig, prompt_form=_prompt_api_form) -> ApiConfig | None:
+    fields = (
+        "Dune API Key",
+        "GoPlus API Key",
+        "GoPlus API Secret",
+        "Alchemy API Key",
+        "Chainbase API Key",
+        "CoinGecko API Key (Optional)",
+    )
+    defaults = (
+        existing.dune_api_key,
+        existing.goplus_api_key,
+        existing.goplus_api_secret,
+        existing.alchemy_api_key,
+        existing.chainbase_api_key,
+        existing.coingecko_api_key,
+    )
+    values = prompt_form("API Config", fields, defaults)
+    if values is None:
         return None
-    goplus_api_key = _prompt_text("API Config", "GoPlus API Key", existing.goplus_api_key)
-    if goplus_api_key is None:
-        return None
-    goplus_api_secret = _prompt_text("API Config", "GoPlus API Secret", existing.goplus_api_secret)
-    if goplus_api_secret is None:
-        return None
-    alchemy_api_key = _prompt_text("API Config", "Alchemy API Key", existing.alchemy_api_key)
-    if alchemy_api_key is None:
-        return None
-    chainbase_api_key = _prompt_text("API Config", "Chainbase API Key", existing.chainbase_api_key)
-    if chainbase_api_key is None:
-        return None
+    dune_api_key, goplus_api_key, goplus_api_secret, alchemy_api_key, chainbase_api_key, coingecko_api_key = values
     return ApiConfig(
         dune_api_key=dune_api_key,
         goplus_api_key=goplus_api_key,
         goplus_api_secret=goplus_api_secret,
         alchemy_api_key=alchemy_api_key,
         chainbase_api_key=chainbase_api_key,
+        coingecko_api_key=coingecko_api_key,
     )
 
 

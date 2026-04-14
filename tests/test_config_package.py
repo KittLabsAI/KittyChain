@@ -37,6 +37,7 @@ def test_config_round_trip_persists_models_and_apis(tmp_path: Path):
             goplus_api_secret="goplus-secret",
             alchemy_api_key="alchemy",
             chainbase_api_key="chainbase",
+            coingecko_api_key="cg-key",
         ),
     )
 
@@ -47,6 +48,15 @@ def test_config_round_trip_persists_models_and_apis(tmp_path: Path):
     assert loaded.apis == original.apis
     assert loaded.interface == "openai"
     assert loaded.model == "gpt-4.1"
+
+
+def test_config_round_trip_includes_coingecko_api_key(tmp_path: Path):
+    path = tmp_path / "config.json"
+
+    Config(apis=ApiConfig(coingecko_api_key="cg-key")).write(path)
+    loaded = Config.from_file(path)
+
+    assert loaded.apis.coingecko_api_key == "cg-key"
 
 
 def test_config_from_old_file_without_apis_uses_empty_api_defaults(tmp_path: Path):

@@ -13,6 +13,7 @@ API_FIELDS = (
     "goplus_api_secret",
     "alchemy_api_key",
     "chainbase_api_key",
+    "coingecko_api_key",
 )
 
 
@@ -59,6 +60,7 @@ class ApiConfig:
     goplus_api_secret: str = ""
     alchemy_api_key: str = ""
     chainbase_api_key: str = ""
+    coingecko_api_key: str = ""
 
     @classmethod
     def from_dict(cls, raw: object) -> "ApiConfig":

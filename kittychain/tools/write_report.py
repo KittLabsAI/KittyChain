@@ -1,4 +1,4 @@
-"""Generate HTML investigation reports with optional relationship graphs."""
+"""Generate investigation reports with optional relationship graphs."""
 
 from __future__ import annotations
 
@@ -16,11 +16,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # type: ignore
-    from ask_user import AskUserTool  # type: ignore
+    from hooks.user_permission import request_user_permission  # type: ignore
     from llm.provider import _strip_think_blocks  # type: ignore
 else:
     from .base import Tool
-    from .ask_user import AskUserTool
+    from ..hooks.user_permission import request_user_permission
     from ..llm.provider import _strip_think_blocks
 
 ADDRESS_RELATIONS = ("hop1-counterparty", "hop2-counterparty", "hop3-counterparty")
@@ -79,6 +79,7 @@ Supports address reports and token reports, with optional deep-mode relevant-add
                 "description": (
                     "Relevant addresses, required for `deep` mode. Each item should include: "
                     "address, balance, labels, identity, relation with origin address or top holders, notes. "
+                    "If `mode=deep`, each item must include at least 1 of: balance, labels, identity. "
                     "For `type=address`, relation must be one of: hop1-counterparty, "
                     "hop2-counterparty, hop3-counterparty."
                 ),
@@ -87,11 +88,13 @@ Supports address reports and token reports, with optional deep-mode relevant-add
             "graph_data": {
                 "type": "object",
                 "description": (
-                    "Required for `deep` mode. Format must match: "
+                    "Required for `deep` mode. Python dict type, format must match: "
                     '`{"node": [{"address": "...", "chain_name": "Ethereum", "address_identity": {...}, '
                     '"address_labels": [...], "address_balance": {...}, "address_malicious": {...}}], '
                     '"edge": [{"source_address": "...", "target_address": "...", "direction": "from", '
                     '"usd_value": 1234, "address_transfers": {...}, "start_time": "...", "end_time": "..."}]}`. '
+                    "If `mode=deep`, each node must include at least 2 of: address_identity, "
+                    "address_labels, address_balance, address_malicious. "
                     "Each `deep` mode report requires at least 5 nodes and 5 edges."
                 ),
             },
@@ -140,24 +143,23 @@ Supports address reports and token reports, with optional deep-mode relevant-add
             "content": content or "",
         }
 
-        skip_payload_validation, ask_user_answer = maybe_confirm_direct_generation(
-            payload,
-            getattr(self, "_parent_agent", None),
-        )
-
-        if ask_user_answer and not skip_payload_validation:
-            return ask_user_answer
-
-        if not skip_payload_validation:
-            errors = validate_payload(payload, agent=getattr(self, "_parent_agent", None))
-            if errors:
+        errors = validate_payload(payload, agent=getattr(self, "_parent_agent", None))
+        if errors:
+            skip_payload_validation, ask_user_answer = maybe_confirm_direct_generation(
+                payload,
+                errors,
+                getattr(self, "_parent_agent", None),
+            )
+            if ask_user_answer and not skip_payload_validation:
+                return ask_user_answer + "\n" + "Error: " + "; ".join(errors)
+            if not skip_payload_validation:
                 return "Error: " + "; ".join(errors)
 
         try:
             if payload["graph_data"]:
                 payload["graph_html"] = render_graph_html(payload["graph_data"])
-            html = generate_report_html(payload, getattr(self, "_parent_agent", None))
-            document = wrap_html_document(html, report_title(payload))
+            markdown_report = generate_markdown_report(payload, getattr(self, "_parent_agent", None))
+            document = wrap_html_document(markdown_report, payload.get("graph_html", ""), report_title(payload))
             output_path = write_report_file(payload, document)
         except Exception as exc:
             return f"Error: {exc}"
@@ -211,7 +213,7 @@ def validate_payload(
     for field_name in ("top_holders", "top_lp_holders", "relevant_addresses"):
         value = payload.get(field_name)
         if value:
-            errors.extend(validate_address_rows(value, field_name, report_type=report_type))
+            errors.extend(validate_address_rows(value, field_name, report_type=report_type, mode=mode))
 
     if mode == "deep":
         if not is_non_empty_list(payload.get("relevant_addresses")):
@@ -230,7 +232,7 @@ def is_non_empty_list(value: Any) -> bool:
     return isinstance(value, list) and len(value) > 0
 
 
-def validate_address_rows(rows: Any, field_name: str, *, report_type: str) -> list[str]:
+def validate_address_rows(rows: Any, field_name: str, *, report_type: str, mode: str) -> list[str]:
     if not isinstance(rows, list):
         return [f"{field_name} must be a list"]
 
@@ -241,6 +243,12 @@ def validate_address_rows(rows: Any, field_name: str, *, report_type: str) -> li
             continue
         if not str(row.get("address", "")).strip():
             errors.append(f"{field_name}[{index}].address is required")
+        if field_name == "relevant_addresses" and mode == "deep":
+            populated = _count_present_values(row, ("balance", "labels", "identity"))
+            if populated < 1:
+                errors.append(
+                    f"{field_name}[{index}] must include at least one of: balance, labels, identity"
+                )
         if field_name == "relevant_addresses" and report_type == "address":
             relation = str(row.get("relation", "")).strip()
             if relation not in ADDRESS_RELATIONS:
@@ -250,9 +258,23 @@ def validate_address_rows(rows: Any, field_name: str, *, report_type: str) -> li
     return errors
 
 
+def _has_present_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, dict, tuple, set)):
+        return len(value) > 0
+    return True
+
+
+def _count_present_values(row: dict[str, Any], fields: tuple[str, ...]) -> int:
+    return sum(1 for field in fields if _has_present_value(row.get(field)))
+
+
 def validate_graph_data(graph_data: Any, origin_address: str = "") -> list[str]:
     if not isinstance(graph_data, dict):
-        return ["graph_data is required for mode=deep"]
+        return ["graph_data is required for mode=deep and graph_data must be a dict"]
 
     nodes = graph_data.get("node")
     edges = graph_data.get("edge")
@@ -280,76 +302,38 @@ def _graph_shortage_message(kind: str, origin_address: str) -> str:
     return f"graph_data must include at least 5 {kind}; find more hop1/hop2 counterparties of {target}"
 
 
-def maybe_confirm_direct_generation(payload: dict[str, Any], agent) -> tuple[bool, str | None]:
+def maybe_confirm_direct_generation(payload: dict[str, Any], errors: list[str], agent) -> tuple[bool, str | None]:
     if getattr(agent, "mode", "") != "deep":
         return False, None
 
-    if not needs_more_counterparties(payload):
+    if not errors:
         return False, None
 
-    answer = _ask_user_to_confirm_direct_generation(agent, payload)
-    if answer is None:
+    decision = _request_direct_generation_permission(agent, payload, errors)
+    if decision is None:
         return False, None
-    return _confirm_direct_generation(agent, answer), answer
+    return decision == "accept", decision
 
 
-def needs_more_counterparties(payload: dict[str, Any]) -> bool:
-    relevant_addresses = payload.get("relevant_addresses") or []
-    graph_data = payload.get("graph_data") or {}
-    nodes = graph_data.get("node") if isinstance(graph_data, dict) else None
-    edges = graph_data.get("edge") if isinstance(graph_data, dict) else None
-    return (
-        not is_non_empty_list(relevant_addresses)
-        or not isinstance(nodes, list)
-        or len(nodes) < 5
-        or not isinstance(edges, list)
-        or len(edges) < 5
+def _request_direct_generation_permission(agent, payload: dict[str, Any], errors: list[str]) -> str | None:
+    error_lines = "\n".join(f"- {error}" for error in errors)
+    description = (
+        f"Deep mode is enabled, but the payload for {payload.get('origin_address') or 'the origin address'} "
+        f"did not pass validation:\n{error_lines}\n"
+        "Generate the report directly with the same payload instead?"
     )
-
-
-def _confirm_direct_generation(agent, answer: str) -> bool:
-    llm = getattr(agent, "llm", None)
-    if llm is None or not hasattr(llm, "complete"):
-        return False
-
-    worker = llm.clone() if hasattr(llm, "clone") else llm
-    response = worker.complete(
-        [{"role": "user", "content": answer}],
-        system=(
-            "Summarize the user's intent, answer only `yes` or `no`. "
-            "No explanation is needed, just a simple confirmation. "
-        ),
-    )
-    lowered = _strip_think_blocks((response.content or "").strip()).lower()
-    return "yes" in lowered
-
-
-def _ask_user_to_confirm_direct_generation(agent, payload: dict[str, Any]) -> str | None:
-    ask_tool = AskUserTool()
-    ask_tool.bind_agent(agent)
-    tool_output_handler = getattr(agent, "tool_output_handler", None)
-    question = (
-        f"Deep mode is enabled, but there are not enough counterparties to generate a deep report for "
-        f"{payload.get('origin_address') or 'the origin address'}. Generate the report directly with the same payload instead?"
-    )
-    response = ask_tool.execute(
-        [
-            {
-                "header": "Report Mode",
-                "question": question,
-            }
-        ],
-        stream_callback=(
-            (lambda text: tool_output_handler("ask_user", text))
-            if callable(tool_output_handler)
-            else None
-        ),
-    )
-    if response.startswith("Error:") or response == "User declined to answer the questions.":
+    try:
+        return request_user_permission(
+            agent,
+            title="Report Mode",
+            description=description,
+            options=[
+                {"label": "Accept", "value": "accept"},
+                {"label": "Deny", "value": "deny"},
+            ],
+        )
+    except (RuntimeError, ValueError):
         return None
-    if ": " not in response:
-        return None
-    return response.rsplit(": ", 1)[-1].strip()
 
 
 def validate_graph_nodes(nodes: list[Any]) -> list[str]:
@@ -362,6 +346,17 @@ def validate_graph_nodes(nodes: list[Any]) -> list[str]:
             errors.append(f"graph_data.node[{index}].address is required")
         if not str(node.get("chain_name", "")).strip():
             errors.append(f"graph_data.node[{index}].chain_name is required")
+        populated = _count_present_values(
+            node,
+            ("address_identity", "address_labels", "address_balance", "address_malicious"),
+        )
+        if populated < 2:
+            errors.append(
+                "graph_data.node["
+                f"{index}"
+                "] must include at least two of: address_identity, address_labels, "
+                "address_balance, address_malicious"
+            )
     return errors
 
 
@@ -530,7 +525,7 @@ def _build_edge_title(edge: dict[str, Any]) -> str:
     )
 
 
-def generate_report_html(payload: dict[str, Any], agent) -> str:
+def generate_markdown_report(payload: dict[str, Any], agent) -> str:
     llm = getattr(agent, "llm", None)
     if llm is None or not hasattr(llm, "complete"):
         raise RuntimeError("write_report requires an agent llm")
@@ -561,13 +556,12 @@ def build_user_prompt(payload: dict[str, Any]) -> str:
         "top_holders": payload["top_holders"],
         "top_lp_holders": payload["top_lp_holders"],
         "relevant_addresses": payload["relevant_addresses"],
-        "graph_html": payload.get("graph_html", ""),
         "sources": payload["sources"],
         "content": payload["content"],
     }
     return (
-        "Generate an HTML investigation report based on the following JSON payload.\n"
-        "Return HTML only, without markdown fences.\n\n"
+        "Generate a Markdown investigation report based on the following JSON payload.\n"
+        "Return Markdown only, without code fences.\n\n"
         + json.dumps(user_payload, ensure_ascii=False, indent=2)
     )
 
@@ -575,8 +569,8 @@ def build_user_prompt(payload: dict[str, Any]) -> str:
 def build_system_prompt(payload: dict[str, Any]) -> str:
     detail_hint = "If the report mode is `deep`, make it thorough." if payload["mode"] == "deep" else ""
     common = (
-        "You are writing a polished HTML report for an on-chain investigation.\n"
-        "Return valid HTML fragments only.\n"
+        "You are writing a polished Markdown report for an on-chain investigation.\n"
+        "Return Markdown only.\n"
         "Use clear section headings and concise, evidence-based language.\n"
         "If the user asks to output a report, after all information is gathered you must call write_report.\n"
         f"{detail_hint}\n"
@@ -588,10 +582,9 @@ def build_system_prompt(payload: dict[str, Any]) -> str:
             "2. Risk Overview\n"
             "3. Asset Overview\n"
             "4. Transaction Overview\n"
-            "5. Relevant Addresses (if relevant_addresses is not empty), as an HTML table with columns: "
+            "5. Relevant Addresses (if relevant_addresses is not empty), as a Markdown table with columns: "
             "Address, Balance, Labels, Identity, Relation, Notes\n"
-            "6. Association Graph (if graph_html is provided), use the graph_html code from the user prompt directly\n"
-            "7. Sources\n"
+            "6. Sources\n"
         )
     return common + (
         "The report must include these sections in order:\n"
@@ -599,10 +592,9 @@ def build_system_prompt(payload: dict[str, Any]) -> str:
         "2. Risk Overview\n"
         "3. Top Holders Overview\n"
         "4. Top LP Holders Overview\n"
-        "5. Relevant Addresses (if relevant_addresses is not empty), as an HTML table with columns: "
+        "5. Relevant Addresses (if relevant_addresses is not empty), as a Markdown table with columns: "
         "Address, Balance, Labels, Identity, Relation, Notes\n"
-        "6. Association Graph (if graph_html is provided), use the graph_html code from the user prompt directly\n"
-        "7. Sources\n"
+        "6. Sources\n"
     )
 
 
@@ -657,8 +649,6 @@ def render_graph_html(graph_data: dict[str, Any]) -> str:
             }
             """
         )
-    network.barnes_hut()
-
     for node in graph_data.get("node", []):
         if not isinstance(node, dict):
             continue
@@ -736,11 +726,21 @@ def _inject_html_tooltips_markup(html: str) -> str:
     return html.replace(NETWORK_INIT_MARKER, tooltip_script + NETWORK_INIT_MARKER, 1)
 
 
-def wrap_html_document(body_html: str, title: str) -> str:
-    if "<html" in body_html.lower():
-        return body_html
+def wrap_html_document(markdown_report: str, graph_html: str, title: str) -> str:
+    if "<html" in markdown_report.lower():
+        return markdown_report
 
     safe_title = escape(title)
+    report_html = _render_markdown_report(markdown_report)
+    appendix_html = ""
+    if graph_html.strip():
+        appendix_html = (
+            '<section class="report-appendix">'
+            "<h2>Appendix: Association Graph</h2>"
+            f"{graph_html}"
+            "</section>"
+        )
+    body_html = report_html + appendix_html
     include_graph_assets = _requires_vis_network_assets(body_html)
     graph_assets = ""
     graph_styles = ""
@@ -803,16 +803,170 @@ def wrap_html_document(body_html: str, title: str) -> str:
     pre {{
       white-space: pre-wrap;
       word-break: break-word;
+    }}
+    .report-body > *:first-child {{
+      margin-top: 0;
+    }}
+    .report-body h1,
+    .report-body h2,
+    .report-body h3,
+    .report-body h4,
+    .report-body h5,
+    .report-body h6 {{
+      color: #0f172a;
+      margin: 24px 0 12px;
+      line-height: 1.25;
+    }}
+    .report-body p,
+    .report-body ul,
+    .report-body ol {{
+      margin: 0 0 16px;
+      line-height: 1.7;
+    }}
+    .report-body ul,
+    .report-body ol {{
+      padding-left: 24px;
+    }}
+    .report-body code {{
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      background: #f1f5f9;
+      border-radius: 6px;
+      padding: 0.1em 0.35em;
+    }}
+    .report-appendix {{
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #d8e0ec;
     }}{graph_styles}
   </style>
 </head>
 <body>
   <main>
+    <div class="report-body">
 {body_html}
+    </div>
   </main>
 </body>
 </html>
 """
+
+
+def _render_markdown_report(markdown_text: str) -> str:
+    lines = markdown_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    blocks: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        stripped = line.strip()
+        if not stripped:
+            index += 1
+            continue
+        if stripped.startswith("#"):
+            blocks.append(_render_markdown_heading(stripped))
+            index += 1
+            continue
+        if _is_markdown_table_start(lines, index):
+            table_html, index = _render_markdown_table(lines, index)
+            blocks.append(table_html)
+            continue
+        if _is_unordered_list_item(stripped):
+            list_html, index = _render_unordered_list(lines, index)
+            blocks.append(list_html)
+            continue
+        paragraph_lines = [stripped]
+        index += 1
+        while index < len(lines):
+            candidate = lines[index].strip()
+            if not candidate:
+                break
+            if candidate.startswith("#") or _is_unordered_list_item(candidate) or _is_markdown_table_start(lines, index):
+                break
+            paragraph_lines.append(candidate)
+            index += 1
+        blocks.append(f"<p>{_render_inline_markdown(' '.join(paragraph_lines))}</p>")
+    return "\n".join(blocks)
+
+
+def _render_markdown_heading(line: str) -> str:
+    level = min(len(line) - len(line.lstrip("#")), 6)
+    content = line[level:].strip()
+    return f"<h{level}>{_render_inline_markdown(content)}</h{level}>"
+
+
+def _is_unordered_list_item(line: str) -> bool:
+    return line.startswith("- ") or line.startswith("* ")
+
+
+def _render_unordered_list(lines: list[str], start_index: int) -> tuple[str, int]:
+    items: list[str] = []
+    index = start_index
+    while index < len(lines):
+        stripped = lines[index].strip()
+        if not _is_unordered_list_item(stripped):
+            break
+        items.append(f"<li>{_render_inline_markdown(stripped[2:].strip())}</li>")
+        index += 1
+    return "<ul>" + "".join(items) + "</ul>", index
+
+
+def _is_markdown_table_start(lines: list[str], index: int) -> bool:
+    if index + 1 >= len(lines):
+        return False
+    header = lines[index].strip()
+    divider = lines[index + 1].strip()
+    return "|" in header and _is_markdown_table_divider(divider)
+
+
+def _is_markdown_table_divider(line: str) -> bool:
+    if "|" not in line:
+        return False
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    if not cells:
+        return False
+    return all(cell and set(cell) <= {":", "-"} for cell in cells)
+
+
+def _split_markdown_table_row(line: str) -> list[str]:
+    stripped = line.strip().strip("|")
+    return [cell.strip() for cell in stripped.split("|")]
+
+
+def _render_markdown_table(lines: list[str], start_index: int) -> tuple[str, int]:
+    headers = _split_markdown_table_row(lines[start_index])
+    rows: list[list[str]] = []
+    index = start_index + 2
+    while index < len(lines):
+        stripped = lines[index].strip()
+        if not stripped or "|" not in stripped:
+            break
+        rows.append(_split_markdown_table_row(stripped))
+        index += 1
+
+    thead = "<thead><tr>" + "".join(f"<th>{_render_inline_markdown(cell)}</th>" for cell in headers) + "</tr></thead>"
+    tbody_rows = []
+    for row in rows:
+        padded = row + [""] * max(0, len(headers) - len(row))
+        tbody_rows.append(
+            "<tr>" + "".join(f"<td>{_render_inline_markdown(cell)}</td>" for cell in padded[: len(headers)]) + "</tr>"
+        )
+    tbody = "<tbody>" + "".join(tbody_rows) + "</tbody>"
+    return "<table>" + thead + tbody + "</table>", index
+
+
+def _render_inline_markdown(text: str) -> str:
+    escaped = escape(text)
+    code_spans: list[str] = []
+
+    def _store_code_span(match: re.Match[str]) -> str:
+        code_spans.append(f"<code>{match.group(1)}</code>")
+        return f"__CODE_SPAN_{len(code_spans) - 1}__"
+
+    escaped = re.sub(r"`([^`]+)`", _store_code_span, escaped)
+    escaped = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
+    escaped = re.sub(r"__(.+?)__", r"<strong>\1</strong>", escaped)
+    for index, code_html in enumerate(code_spans):
+        escaped = escaped.replace(f"__CODE_SPAN_{index}__", code_html)
+    return escaped
 
 
 def _requires_vis_network_assets(body_html: str) -> bool:

@@ -79,7 +79,7 @@ def test_system_prompt_includes_onchain_lookup_rules():
     assert "address_malicious" in system
     assert "address_transfers" in system
     assert "address_identity" in system
-    assert "token_info" in system
+    assert "token_holders" in system
     assert "https://www.oklink.com/" in system
     assert "web_search` and the `social_search` tool" in system
 
@@ -553,6 +553,9 @@ def test_repl_streams_web_browser_tool_output_only(monkeypatch):
         def write_raw(self, text, role="assistant", kind="plain"):
             outputs.append(("write_raw", text, role, kind))
 
+        def write(self, value):
+            outputs.append(("write", value))
+
         def finalize_active_output(self):
             return None
 
@@ -745,6 +748,210 @@ def test_repl_truncates_web_browser_tool_output_to_first_five_lines(monkeypatch)
     assert ("write_raw", "1\n2\n3\n4\n5", "tool", "plain") in outputs
 
 
+def test_repl_truncates_write_report_tool_output_to_first_five_lines(monkeypatch):
+    outputs = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["scan address", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            outputs.append(("startup", value))
+
+        def print(self, value):
+            outputs.append(("print", value))
+
+        def write_raw(self, text, role="assistant", kind="plain"):
+            outputs.append(("write_raw", text, role, kind))
+
+        def finalize_active_output(self):
+            return None
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+
+    def fake_run_agent_with_escape_interrupt(
+        agent,
+        user_input,
+        on_token=None,
+        on_tool=None,
+        on_tool_output=None,
+        **kwargs,
+    ):
+        on_tool("write_report", {"path": "/tmp/report.html"})
+        on_tool_output("write_report", "1\n2\n3\n4\n5\n6\n7")
+        return "done", False, agent
+
+    monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
+
+    cli._repl(fake_agent, fake_config)
+
+    assert ("write_raw", "1\n2\n3\n4\n5", "tool", "plain") in outputs
+
+
+def test_repl_streams_todo_write_tool_output_without_showing_tool_call(monkeypatch):
+    outputs = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["scan address", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            outputs.append(("startup", value))
+
+        def print(self, value):
+            outputs.append(("print", value))
+
+        def write_raw(self, text, role="assistant", kind="plain"):
+            outputs.append(("write_raw", text, role, kind))
+
+        def write(self, value):
+            outputs.append(("write", value))
+
+        def finalize_active_output(self):
+            return None
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+
+    def fake_run_agent_with_escape_interrupt(agent, user_input, on_tool=None, on_tool_output=None, **kwargs):
+        on_tool("todo_write", {"todos": [{"content": "Task", "status": "pending"}]})
+        on_tool_output("todo_write", "Todos updated.\n- [pending] Task")
+        return "done", False, agent
+
+    monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
+
+    cli._repl(fake_agent, fake_config)
+
+    assert ("write_raw", "Todos updated.\n- [pending] Task", "tool", "plain") in outputs
+    assert not any(item[0] == "print" and "Tool Call: todo_write" in str(item[1]) for item in outputs if len(item) >= 2)
+
+
+def test_repl_streams_brief_tool_output_without_showing_tool_call(monkeypatch):
+    outputs = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["scan address", "/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            outputs.append(("startup", value))
+
+        def print(self, value):
+            outputs.append(("print", value))
+
+        def write_raw(self, text, role="assistant", kind="plain"):
+            outputs.append(("write_raw", text, role, kind))
+
+        def write(self, value):
+            outputs.append(("write", value))
+
+        def finalize_active_output(self):
+            return None
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def request_exit(self):
+            return None
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+
+    def fake_run_agent_with_escape_interrupt(agent, user_input, on_tool=None, on_tool_output=None, **kwargs):
+        on_tool("brief", {"message": "Working on it"})
+        on_tool_output("brief", "Sent brief message (normal).\nWorking on it")
+        return "done", False, agent
+
+    monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
+
+    cli._repl(fake_agent, fake_config)
+
+    assert ("write_raw", "Sent brief message (normal).\nWorking on it", "tool", "plain") in outputs
+    assert not any(item[0] == "print" and "Tool Call: brief" in str(item[1]) for item in outputs if len(item) >= 2)
+
+
 def test_render_tool_call_details_limits_each_argument_to_single_truncated_line():
     panel = cli._render_tool_call_details(
         "write_report",
@@ -859,3 +1066,123 @@ def test_agent_emits_web_browser_result_to_tool_output_callback():
 
     assert response == "done"
     assert seen == [("web_browser", "Browser summary")]
+
+
+def test_agent_emits_write_report_result_to_tool_output_callback():
+    class FakeLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def chat(self, messages, tools=None, on_token=None, cancel_event=None):
+            self.calls += 1
+            if self.calls == 1:
+                return provider.LLMResponse(
+                    content="",
+                    tool_calls=[ToolCall(id="tool-1", name="write_report", arguments={"path": "/tmp/report.html"})],
+                )
+            return provider.LLMResponse(content="done")
+
+    class FakeTool:
+        name = "write_report"
+        description = "Writes report files"
+        parameters = {}
+
+        def bind_agent(self, agent):
+            self.agent = agent
+
+        def schema(self):
+            return {
+                "type": "function",
+                "function": {"name": self.name, "description": self.description, "parameters": self.parameters},
+            }
+
+        def execute(self, path):
+            return "line1\nline2\nline3\nline4\nline5\nline6"
+
+    agent = agent_module.Agent(llm=FakeLLM(), tools=[FakeTool()])
+    seen = []
+
+    response = agent.chat("scan", on_tool_output=lambda name, text: seen.append((name, text)))
+
+    assert response == "done"
+    assert seen == [("write_report", "line1\nline2\nline3\nline4\nline5\nline6")]
+
+
+def test_agent_emits_todo_write_result_to_tool_output_callback():
+    class FakeLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def chat(self, messages, tools=None, on_token=None, cancel_event=None):
+            self.calls += 1
+            if self.calls == 1:
+                return provider.LLMResponse(
+                    content="",
+                    tool_calls=[ToolCall(id="tool-1", name="todo_write", arguments={"todos": []})],
+                )
+            return provider.LLMResponse(content="done")
+
+    class FakeTool:
+        name = "todo_write"
+        description = "Updates todos"
+        parameters = {}
+
+        def bind_agent(self, agent):
+            self.agent = agent
+
+        def schema(self):
+            return {
+                "type": "function",
+                "function": {"name": self.name, "description": self.description, "parameters": self.parameters},
+            }
+
+        def execute(self, todos):
+            return "Todos updated.\n- [pending] Task"
+
+    agent = agent_module.Agent(llm=FakeLLM(), tools=[FakeTool()])
+    seen = []
+
+    response = agent.chat("scan", on_tool_output=lambda name, text: seen.append((name, text)))
+
+    assert response == "done"
+    assert seen == [("todo_write", "Todos updated.\n- [pending] Task")]
+
+
+def test_agent_emits_brief_result_to_tool_output_callback():
+    class FakeLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def chat(self, messages, tools=None, on_token=None, cancel_event=None):
+            self.calls += 1
+            if self.calls == 1:
+                return provider.LLMResponse(
+                    content="",
+                    tool_calls=[ToolCall(id="tool-1", name="brief", arguments={"message": "Working on it"})],
+                )
+            return provider.LLMResponse(content="done")
+
+    class FakeTool:
+        name = "brief"
+        description = "Sends brief updates"
+        parameters = {}
+
+        def bind_agent(self, agent):
+            self.agent = agent
+
+        def schema(self):
+            return {
+                "type": "function",
+                "function": {"name": self.name, "description": self.description, "parameters": self.parameters},
+            }
+
+        def execute(self, message):
+            return "Sent brief message (normal).\nWorking on it"
+
+    agent = agent_module.Agent(llm=FakeLLM(), tools=[FakeTool()])
+    seen = []
+
+    response = agent.chat("scan", on_tool_output=lambda name, text: seen.append((name, text)))
+
+    assert response == "done"
+    assert seen == [("brief", "Sent brief message (normal).\nWorking on it")]

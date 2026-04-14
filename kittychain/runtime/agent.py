@@ -39,6 +39,7 @@ class AgentState:
 class AgentRun:
     state: AgentState
     ask_user_handler: object = None
+    permission_handler: object = None
     on_brief_message: object = None
     tool_output_handler: object = None
 
@@ -92,6 +93,7 @@ class Agent:
         self._state_lock = threading.Lock()
         self._run_local = threading.local()
         self._ask_user_handler = None
+        self._permission_handler = None
         self._on_brief_message = None
         self._tool_output_handler = None
         self.context = ContextManager(max_tokens=max_context_tokens)
@@ -198,6 +200,21 @@ class Agent:
             return
         self._tool_output_handler = value
 
+    @property
+    def permission_handler(self):
+        current_run = self._current_run()
+        if current_run is not None:
+            return current_run.permission_handler
+        return self._permission_handler
+
+    @permission_handler.setter
+    def permission_handler(self, value) -> None:
+        current_run = self._current_run()
+        if current_run is not None:
+            current_run.permission_handler = value
+            return
+        self._permission_handler = value
+
     def begin_run(self) -> AgentRun:
         with self._state_lock:
             return AgentRun(
@@ -207,6 +224,7 @@ class Agent:
                     brief_messages=copy.deepcopy(self._state.brief_messages),
                 ),
                 ask_user_handler=self._ask_user_handler,
+                permission_handler=self._permission_handler,
                 on_brief_message=self._on_brief_message,
                 tool_output_handler=self._tool_output_handler,
             )
@@ -219,6 +237,7 @@ class Agent:
                 brief_messages=copy.deepcopy(run.state.brief_messages),
             ),
             ask_user_handler=run.ask_user_handler,
+            permission_handler=run.permission_handler,
             on_brief_message=run.on_brief_message,
             tool_output_handler=run.tool_output_handler,
         )
@@ -269,6 +288,7 @@ class Agent:
         worker.todos = copy.deepcopy(self.todos)
         worker.brief_messages = copy.deepcopy(self.brief_messages)
         worker.ask_user_handler = self.ask_user_handler
+        worker.permission_handler = self.permission_handler
         worker.on_brief_message = self.on_brief_message
         worker.tool_output_handler = self.tool_output_handler
         worker.skills = list(self.skills)
@@ -361,7 +381,7 @@ class Agent:
             if cancel_event is not None and "cancel_event" in parameters:
                 execute_kwargs["cancel_event"] = cancel_event
             result = tool.execute(**execute_kwargs)
-            if on_output is not None and tool_call.name in {"web_browser", "ask_user"} and not streamed_output and result:
+            if on_output is not None and tool_call.name in {"web_browser", "ask_user", "write_report", "todo_write", "brief"} and not streamed_output and result:
                 on_output(tool_call.name, result)
             return result
         except TypeError as exc:

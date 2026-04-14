@@ -8,8 +8,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # type: ignore
+    from hooks.user_permission import request_user_permission  # type: ignore
 else:
     from .base import Tool
+    from ..hooks.user_permission import request_user_permission
 
 
 class WriteTool(Tool):
@@ -36,6 +38,22 @@ For small edits to existing files, prefer the edit_file tool instead.
 
     def execute(self, file_path: str, content: str) -> str:
         path = Path(file_path).expanduser().resolve()
+        agent = getattr(self, "_parent_agent", None)
+        if agent is not None:
+            try:
+                decision = request_user_permission(
+                    agent,
+                    description=f"Allow the agent to write {path}?",
+                    options=[
+                        {"label": "Allow", "value": "allow"},
+                        {"label": "Deny", "value": "deny"},
+                    ],
+                    title="File Permission",
+                )
+            except (RuntimeError, ValueError) as exc:
+                return f"Error: {exc}"
+            if decision != "allow":
+                return "User denied permission grant"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
         return f"Wrote {file_path}"

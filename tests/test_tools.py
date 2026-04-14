@@ -1,4 +1,5 @@
 import io
+import os
 import subprocess
 import sys
 import tempfile
@@ -28,7 +29,10 @@ import kittychain.tools.grep as grep_module
 import kittychain.tools.read as read_module
 import kittychain.tools.social_search as social_search_module
 import kittychain.tools.skill as skill_module
-import kittychain.tools.token_info as token_info_module
+import kittychain.tools.token_holders as token_holders_module
+import kittychain.tools.token_data as token_data_module
+import kittychain.tools.token_market_data as token_market_data_module
+import kittychain.tools.token_search as token_search_module
 import kittychain.tools.token_security as token_security_module
 import kittychain.tools.todo_write as todo_write_module
 import kittychain.tools.web_browser as web_browser_module
@@ -56,7 +60,10 @@ from kittychain.tools.address_labels import (
 )
 from kittychain.tools.address_mallicious import render_security_text, summarize_security_result
 from kittychain.tools.address_transfers import fetch_all_transfers, render_transfers_text, summarize_transfers
-from kittychain.tools.token_info import TokenInfoTool, fetch_token_info, main as token_info_main
+from kittychain.tools.token_holders import TokenHoldersTool, fetch_token_holders, main as token_holders_main
+from kittychain.tools.token_data import TokenDataTool, fetch_token_data, main as token_data_main, render_text as render_token_data_text
+from kittychain.tools.token_market_data import TokenMarketDataTool, fetch_token_market_data, main as token_market_data_main
+from kittychain.tools.token_search import TokenSearchTool, fetch_token_search, main as token_search_main
 from kittychain.tools.token_security import TokenSecurityTool, main as token_security_main, summarize_token_security_result
 
 
@@ -124,6 +131,20 @@ class ToolsTests(unittest.TestCase):
 
         self.assertIsNotNone(tool)
         self.assertEqual(tool.name, "social_search")
+
+    def test_token_search_tool_is_registered(self):
+        from kittychain.tools import get_tool
+
+        tool = get_tool("token_search")
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "token_search")
+
+    def test_token_search_uses_package_data_path(self):
+        self.assertEqual(
+            token_search_module.TOKEN_LIST_PATH,
+            Path(__file__).resolve().parent.parent / "kittychain" / "tools" / "data" / "token_list.json",
+        )
 
     def test_social_search_tool_requires_query_lookback_days_and_depth(self):
         self.assertEqual(
@@ -539,7 +560,7 @@ class ToolsTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(buffer.getvalue().strip(), "rendered:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
-    def test_fetch_token_info_combines_price_history_and_top_holders(self):
+    def test_fetch_token_holders_returns_top_holders_only(self):
         calls = []
         sleeps = []
         clock = {"now": 0.0}
@@ -557,21 +578,6 @@ class ToolsTests(unittest.TestCase):
         class FakeSession:
             def get(self, url, headers=None, params=None, timeout=None):
                 calls.append({"url": url, "params": params})
-                if url.endswith("/token/price"):
-                    return FakeResponse(
-                        {"code": 0, "message": "ok", "data": {"price": "1.23", "symbol": "USDC", "contract_address": params["contract_address"]}}
-                    )
-                if url.endswith("/token/price/history"):
-                    return FakeResponse(
-                        {
-                            "code": 0,
-                            "message": "ok",
-                            "data": [
-                                {"price": "1.20", "updated_at": "2024-01-01T00:00:00Z"},
-                                {"price": "1.21", "updated_at": "2024-01-02T00:00:00Z"},
-                            ],
-                        }
-                    )
                 return FakeResponse(
                     {
                         "code": 0,
@@ -598,21 +604,16 @@ class ToolsTests(unittest.TestCase):
             sleeps.append(seconds)
             clock["now"] += seconds
 
-        summary = fetch_token_info(
+        summary = fetch_token_holders(
             "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
             1,
-            1704067200,
-            1704153600,
             "test-key",
             session=FakeSession(),
             time_func=fake_time,
             sleep_func=fake_sleep,
         )
 
-        self.assertEqual(len(calls), 3)
-        self.assertEqual(summary["current_price_usd"], 1.23)
-        self.assertEqual(len(summary["price_history"]), 2)
-        self.assertEqual(summary["price_history"][0]["price_usd"], 1.2)
+        self.assertEqual(len(calls), 1)
         self.assertEqual(
             summary["top_holders"][0],
             {
@@ -621,45 +622,409 @@ class ToolsTests(unittest.TestCase):
                 "usd_value": 1230.0,
             },
         )
-        self.assertEqual(len(sleeps), 2)
+        self.assertEqual(len(sleeps), 0)
 
-    def test_token_info_tool_description_mentions_chain_ids_and_timestamps(self):
-        description = TokenInfoTool.parameters["properties"]["chain_id"]["description"]
+    def test_fetch_token_market_data_uses_names_parameter(self):
+        calls = []
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return [
+                    {
+                        "id": "usd-coin",
+                        "symbol": "usdc",
+                        "name": "USD Coin",
+                        "current_price": 1.0,
+                        "market_cap": 100,
+                        "market_cap_rank": 7,
+                        "fully_diluted_valuation": 110,
+                        "total_volume": 50,
+                        "last_updated": "2026-04-13T00:00:00.000Z",
+                    }
+                ]
+
+        class FakeSession:
+            def get(self, url, headers=None, params=None, timeout=None):
+                calls.append({"url": url, "headers": headers, "params": params, "timeout": timeout})
+                return FakeResponse()
+
+        result = fetch_token_market_data(token_names=["USD Coin"], token_symbols=None, api_key="cg-key", session=FakeSession())
+
+        self.assertEqual(result[0]["id"], "usd-coin")
+        self.assertEqual(calls[0]["params"]["names"], "USD Coin")
+        self.assertEqual(calls[0]["params"]["vs_currency"], "usd")
+
+    def test_fetch_token_market_data_uses_symbols_and_include_tokens_all(self):
+        calls = []
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return []
+
+        class FakeSession:
+            def get(self, url, headers=None, params=None, timeout=None):
+                calls.append({"url": url, "headers": headers, "params": params, "timeout": timeout})
+                return FakeResponse()
+
+        fetch_token_market_data(token_names=None, token_symbols=["USDC", "USDT"], api_key="cg-key", session=FakeSession())
+
+        self.assertEqual(calls[0]["params"]["symbols"], "USDC,USDT")
+        self.assertEqual(calls[0]["params"]["include_tokens"], "all")
+
+    def test_fetch_token_data_uses_search_then_coin_details_with_required_params(self):
+        calls = []
+
+        class FakeResponse:
+            def __init__(self, payload):
+                self._payload = payload
+
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return self._payload
+
+        class FakeSession:
+            def get(self, url, headers=None, params=None, timeout=None):
+                calls.append({"url": url, "headers": headers, "params": params, "timeout": timeout})
+                if url.endswith("/search"):
+                    return FakeResponse(
+                        {
+                            "coins": [
+                                {"id": "usd-coin", "symbol": "usdc", "name": "USD Coin"},
+                            ]
+                        }
+                    )
+                return FakeResponse(
+                    {
+                        "id": "usd-coin",
+                        "symbol": "usdc",
+                        "name": "USD Coin",
+                        "categories": ["Stablecoins"],
+                        "links": {},
+                        "market_cap_rank": 7,
+                        "market_cap_rank_with_rehypothecated": 8,
+                        "developer_data": {"stars": 10},
+                        "tickers": [],
+                    }
+                )
+
+        result = fetch_token_data(token_name="USD Coin", token_symbol=None, api_key="cg-key", session=FakeSession())
+
+        self.assertEqual(result["id"], "usd-coin")
+        self.assertEqual(calls[0]["params"], {"query": "USD Coin"})
+        self.assertEqual(
+            calls[1]["params"],
+            {
+                "localization": "false",
+                "tickers": "true",
+                "market_data": "false",
+                "community_data": "false",
+                "developer_data": "true",
+                "sparkline": "false",
+                "include_categories_details": "false",
+                "dex_pair_format": "contract_address",
+            },
+        )
+
+    def test_render_token_data_text_includes_links_market_summary_and_usdt_details(self):
+        text = render_token_data_text(
+            {
+                "id": "usd-coin",
+                "symbol": "usdc",
+                "name": "USD Coin",
+                "categories": ["Stablecoins", "Ethereum Ecosystem"],
+                "links": {
+                    "homepage": ["https://www.circle.com/usdc"],
+                    "blockchain_site": ["https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
+                    "official_forum_url": [],
+                    "chat_url": ["https://discord.gg/circle"],
+                    "announcement_url": [],
+                    "twitter_screen_name": "circle",
+                    "facebook_username": "",
+                    "telegram_channel_identifier": "circlepay",
+                    "subreddit_url": "https://reddit.com/r/USDCoin",
+                    "repos_url": {"github": ["https://github.com/circlefin"]},
+                },
+                "market_cap_rank": 7,
+                "market_cap_rank_with_rehypothecated": 8,
+                "developer_data": {"stars": 10, "forks": 5},
+                "tickers": [
+                    {
+                        "market": {"name": "Binance"},
+                        "target": "USDT",
+                        "base": "USDC",
+                        "last": 0.9999,
+                        "volume": 1000,
+                        "bid_ask_spread_percentage": 0.1,
+                        "coin_mcap_usd": 50000000,
+                        "converted_last": {"usd": 1.0},
+                        "converted_volume": {"usd": 1000000},
+                    },
+                    {
+                        "market": {"name": "Bybit"},
+                        "target": "USDT",
+                        "base": "USDC",
+                        "last": 1.0001,
+                        "volume": 2000,
+                        "bid_ask_spread_percentage": 0.2,
+                        "coin_mcap_usd": 51000000,
+                        "converted_last": {"usd": 1.01},
+                        "converted_volume": {"usd": 3000000},
+                    },
+                    {
+                        "market": {"name": "Binance"},
+                        "target": "BTC",
+                        "base": "USDC",
+                        "last": 0.00001,
+                        "volume": 100,
+                        "bid_ask_spread_percentage": 0.3,
+                        "coin_mcap_usd": 52000000,
+                        "converted_last": {"usd": 0.95},
+                        "converted_volume": {"usd": 10000},
+                    },
+                ],
+            }
+        )
+
+        self.assertIn("categories: Stablecoins, Ethereum Ecosystem", text)
+        self.assertIn("homepage: https://www.circle.com/usdc", text)
+        self.assertIn("twitter_screen_name: https://twitter.com/circle", text)
+        self.assertIn("telegram_channel_identifier: https://t.me/circlepay", text)
+        self.assertIn("repos_url.github: https://github.com/circlefin", text)
+        self.assertIn("listing_markets: Binance, Bybit", text)
+        self.assertIn("converted_last.usd_sum: 2.01", text)
+        self.assertIn("converted_volume.usd_sum: 4000000.0", text)
+        self.assertIn("bid_ask_spread_percentage_weighted_avg: 0.175", text)
+        self.assertIn("coin_mcap_usd_sum: 101000000.0", text)
+        self.assertIn("1. Binance USDC/USDT", text)
+        self.assertIn("2. Bybit USDC/USDT", text)
+
+    def test_token_data_tool_is_registered(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tool = tools_module.get_tool("token_data", tools=tools_module.create_tool_instances())
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "token_data")
+
+    def test_create_tool_instances_skips_token_data_without_coingecko_api_key(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key=""))
+            tools = tools_module.create_tool_instances()
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        self.assertNotIn("token_data", tool_names)
+
+    def test_create_tool_instances_includes_token_data_with_coingecko_api_key(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances()
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        self.assertIn("token_data", tool_names)
+
+    def test_fetch_token_search_reads_local_cache_and_matches_case_insensitively(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_path = Path(tmpdir) / "token_list.json"
+            cache_path.write_text(
+                """
+[
+  {
+    "id": "seedify-fund",
+    "symbol": "SFUND",
+    "name": "Seedify.fund",
+    "platforms": {
+      "ethereum": "0xabc",
+      "binance-smart-chain": "0xdef"
+    }
+  },
+  {
+    "id": "seedify-fund-bridged",
+    "symbol": "SFUND",
+    "name": "Seedify.fund",
+    "platforms": {
+      "base": "0x123"
+    }
+  },
+  {
+    "id": "other",
+    "symbol": "OTHER",
+    "name": "Other",
+    "platforms": {}
+  }
+]
+""".strip()
+            )
+            original_path = token_search_module.TOKEN_LIST_PATH
+            original_load_key = token_search_module._load_coingecko_api_key
+            try:
+                token_search_module.TOKEN_LIST_PATH = cache_path
+                token_search_module._load_coingecko_api_key = lambda: ""
+
+                summary = fetch_token_search(token_symbol="sfund", token_name=None)
+            finally:
+                token_search_module.TOKEN_LIST_PATH = original_path
+                token_search_module._load_coingecko_api_key = original_load_key
+
+        self.assertEqual([item["id"] for item in summary], ["seedify-fund", "seedify-fund-bridged"])
+        self.assertEqual(summary[0]["platforms"], {"ethereum": "0xabc", "binance-smart-chain": "0xdef"})
+
+    def test_fetch_token_search_refreshes_stale_cache_when_coingecko_key_present(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_path = Path(tmpdir) / "token_list.json"
+            cache_path.write_text("[]")
+            stale_time = 1_700_000_000 - (2 * 24 * 60 * 60)
+            os.utime(cache_path, (stale_time, stale_time))
+            original_path = token_search_module.TOKEN_LIST_PATH
+            original_load_key = token_search_module._load_coingecko_api_key
+            original_refresh = token_search_module._refresh_token_list_cache
+            try:
+                token_search_module.TOKEN_LIST_PATH = cache_path
+                token_search_module._load_coingecko_api_key = lambda: "cg-key"
+                token_search_module._refresh_token_list_cache = lambda api_key, session=None, timeout=20: [
+                    {
+                        "id": "seedify-fund",
+                        "symbol": "SFUND",
+                        "name": "Seedify.fund",
+                        "platforms": {"ethereum": "0xabc"},
+                    }
+                ]
+
+                summary = fetch_token_search(token_symbol="SFUND", token_name=None, now=1_700_000_000)
+            finally:
+                token_search_module.TOKEN_LIST_PATH = original_path
+                token_search_module._load_coingecko_api_key = original_load_key
+                token_search_module._refresh_token_list_cache = original_refresh
+
+            self.assertEqual([item["id"] for item in summary], ["seedify-fund"])
+            self.assertIn("seedify-fund", cache_path.read_text())
+
+    def test_fetch_token_search_falls_back_to_dexscreener_when_cache_too_old_without_key(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_path = Path(tmpdir) / "token_list.json"
+            cache_path.write_text("[]")
+            stale_time = 1_700_000_000 - (8 * 24 * 60 * 60)
+            os.utime(cache_path, (stale_time, stale_time))
+            original_path = token_search_module.TOKEN_LIST_PATH
+            original_load_key = token_search_module._load_coingecko_api_key
+            original_dex = token_search_module._search_dexscreener
+            try:
+                token_search_module.TOKEN_LIST_PATH = cache_path
+                token_search_module._load_coingecko_api_key = lambda: ""
+                token_search_module._search_dexscreener = lambda token_symbol, token_name, session=None, timeout=20: [
+                    {
+                        "id": "fallback",
+                        "symbol": "SFUND",
+                        "name": "Seedify.fund",
+                        "platforms": {"bsc": "0xdef"},
+                    }
+                ]
+
+                summary = fetch_token_search(token_symbol="SFUND", token_name=None, now=1_700_000_000)
+            finally:
+                token_search_module.TOKEN_LIST_PATH = original_path
+                token_search_module._load_coingecko_api_key = original_load_key
+                token_search_module._search_dexscreener = original_dex
+
+        self.assertEqual(summary, [{"id": "fallback", "symbol": "SFUND", "name": "Seedify.fund", "platforms": {"bsc": "0xdef"}}])
+
+    def test_refresh_token_list_cache_uses_demo_endpoint_and_header(self):
+        calls = []
+
+        class FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return [{"id": "seedify-fund", "symbol": "SFUND", "name": "Seedify.fund", "platforms": {}}]
+
+        class FakeSession:
+            def get(self, url, params=None, timeout=None, headers=None):
+                calls.append({"url": url, "params": params, "timeout": timeout, "headers": headers})
+                return FakeResponse()
+
+        result = token_search_module._refresh_token_list_cache("cg-key", session=FakeSession())
+
+        self.assertEqual(result[0]["id"], "seedify-fund")
+        self.assertEqual(calls[0]["url"], "https://api.coingecko.com/api/v3/coins/list")
+        self.assertEqual(calls[0]["params"], {"include_platform": "true"})
+        self.assertEqual(calls[0]["headers"]["x-cg-demo-api-key"], "cg-key")
+
+    def test_token_search_tool_requires_symbol_or_name(self):
+        result = TokenSearchTool().execute(token_symbol="", token_name="")
+
+        self.assertEqual(result, "Error: token_symbol or token_name is required")
+
+    def test_token_search_tool_supports_name_only_search(self):
+        original_fetch = token_search_module.fetch_token_search
+        try:
+            token_search_module.fetch_token_search = lambda token_symbol, token_name, session=None, timeout=20: [
+                {
+                    "id": "seedify-fund",
+                    "name": "Seedify.fund",
+                    "symbol": "SFUND",
+                    "platforms": {"ethereum": "0xabc"},
+                }
+            ]
+
+            result = TokenSearchTool().execute(token_symbol="", token_name="Seedify.fund")
+        finally:
+            token_search_module.fetch_token_search = original_fetch
+
+        self.assertIn("Token search results", result)
+        self.assertIn("seedify-fund", result)
+        self.assertIn("Seedify.fund", result)
+        self.assertIn("ethereum: 0xabc", result)
+
+    def test_token_search_main_returns_success_and_prints_output(self):
+        original_fetch = token_search_module.fetch_token_search
+        original_render = token_search_module.render_text
+        try:
+            token_search_module.fetch_token_search = lambda token_symbol, token_name, session=None, timeout=20: [
+                {
+                    "id": "seedify-fund",
+                    "name": "Seedify.fund",
+                    "symbol": "SFUND",
+                    "platforms": {"ethereum": "0xabc"},
+                }
+            ]
+            token_search_module.render_text = lambda summary: f"rendered:{summary[0]['id']}:{summary[0]['symbol']}"
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = token_search_main("SFUND", "")
+        finally:
+            token_search_module.fetch_token_search = original_fetch
+            token_search_module.render_text = original_render
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(buffer.getvalue().strip(), "rendered:seedify-fund:SFUND")
+
+    def test_token_holders_tool_description_mentions_chain_ids(self):
+        description = TokenHoldersTool.parameters["properties"]["chain_id"]["description"]
         self.assertIn("Ethereum=1", description)
         self.assertIn("Merlin=4200", description)
-
-        start_description = TokenInfoTool.parameters["properties"]["start_time"]["description"]
-        end_description = TokenInfoTool.parameters["properties"]["end_time"]["description"]
-        self.assertIn("Unix timestamp integer", start_description)
-        self.assertIn("from_timestamp", start_description)
-        self.assertIn("end_timestamp", end_description)
-        self.assertIn("90 days", end_description)
-
-    def test_token_info_tool_rejects_ranges_longer_than_90_days_before_fetch(self):
-        original_load_api_key = token_info_module._load_api_key
-        original_fetch = token_info_module.fetch_token_info
-        fetch_called = {"value": False}
-        try:
-            token_info_module._load_api_key = lambda: "test-key"
-
-            def fake_fetch(*args, **kwargs):
-                fetch_called["value"] = True
-                return {}
-
-            token_info_module.fetch_token_info = fake_fetch
-
-            result = TokenInfoTool().execute(
-                token_address="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-                chain_id=1,
-                start_time=1704067200,
-                end_time=1704067200 + 90 * 24 * 60 * 60 + 1,
-            )
-        finally:
-            token_info_module._load_api_key = original_load_api_key
-            token_info_module.fetch_token_info = original_fetch
-
-        self.assertEqual(result, "Error: start_time and end_time must be within 90 days")
-        self.assertFalse(fetch_called["value"])
 
     def test_tool_descriptions_include_investigation_guidance(self):
         self.assertIn("oklink.com", web_browser_module.WebBrowserTool.description.lower())
@@ -683,42 +1048,152 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("ask_user", address_identity_module.AddressIdentityTool.description)
         self.assertIn("address_malicious", address_identity_module.AddressIdentityTool.description)
 
-        self.assertIn("top holders", token_info_module.TokenInfoTool.description)
-        self.assertIn("address_malicious", token_info_module.TokenInfoTool.description)
+        self.assertIn("top holders", token_holders_module.TokenHoldersTool.description)
+        self.assertIn("address_malicious", token_holders_module.TokenHoldersTool.description)
 
         self.assertIn("progress updates", brief_module.BriefTool.description)
 
         self.assertIn("fresh external sources", web_search_module.WebSearchTool.description)
 
-    def test_token_info_main_returns_success_and_prints_output(self):
-        original_load_api_key = token_info_module._load_api_key
-        original_fetch = token_info_module.fetch_token_info
-        original_render = token_info_module.render_text
+    def test_token_holders_main_returns_success_and_prints_output(self):
+        original_load_api_key = token_holders_module._load_api_key
+        original_fetch = token_holders_module.fetch_token_holders
+        original_render = token_holders_module.render_text
         try:
-            token_info_module._load_api_key = lambda: "test-key"
-            token_info_module.fetch_token_info = lambda token_address, chain_id, start_time, end_time, api_key: {
+            token_holders_module._load_api_key = lambda: "test-key"
+            token_holders_module.fetch_token_holders = lambda token_address, chain_id, api_key: {
                 "token_address": token_address,
                 "chain_id": chain_id,
-                "current_price_usd": 1.23,
-                "price_history": [],
                 "top_holders": [],
             }
-            token_info_module.render_text = lambda summary: f"rendered:{summary['token_address']}:{summary['chain_id']}"
+            token_holders_module.render_text = lambda summary: f"rendered:{summary['token_address']}:{summary['chain_id']}"
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                exit_code = token_info_main(
+                exit_code = token_holders_main(
                     "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
                     1,
-                    1704067200,
-                    1704153600,
                 )
         finally:
-            token_info_module._load_api_key = original_load_api_key
-            token_info_module.fetch_token_info = original_fetch
-            token_info_module.render_text = original_render
+            token_holders_module._load_api_key = original_load_api_key
+            token_holders_module.fetch_token_holders = original_fetch
+            token_holders_module.render_text = original_render
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(buffer.getvalue().strip(), "rendered:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48:1")
+
+    def test_token_market_data_tool_is_registered(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tool = tools_module.get_tool("token_market_data", tools=tools_module.create_tool_instances())
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "token_market_data")
+
+    def test_create_tool_instances_skips_token_market_data_without_coingecko_api_key(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key=""))
+            tools = tools_module.create_tool_instances()
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        self.assertNotIn("token_market_data", tool_names)
+
+    def test_create_tool_instances_includes_token_market_data_with_coingecko_api_key(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances()
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        self.assertIn("token_market_data", tool_names)
+
+    def test_create_tool_instances_never_loads_edit_or_write_tools(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances()
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        self.assertNotIn("edit", tool_names)
+        self.assertNotIn("write", tool_names)
+
+    def test_token_holders_tool_is_registered(self):
+        from kittychain.tools import get_tool
+
+        tool = get_tool("token_holders")
+
+        self.assertIsNotNone(tool)
+        self.assertEqual(tool.name, "token_holders")
+
+    def test_token_market_data_tool_requires_names_or_symbols(self):
+        result = TokenMarketDataTool().execute(token_names=None, token_symbols=None)
+
+        self.assertEqual(result, "Error: token_names or token_symbols is required")
+
+    def test_token_data_tool_requires_name_or_symbol(self):
+        result = TokenDataTool().execute(token_name="", token_symbol="")
+
+        self.assertEqual(result, "Error: token_name or token_symbol is required")
+
+    def test_token_data_main_returns_success_and_prints_output(self):
+        original_load_api_key = token_data_module._load_coingecko_api_key
+        original_fetch = token_data_module.fetch_token_data
+        original_render = token_data_module.render_text
+        try:
+            token_data_module._load_coingecko_api_key = lambda: "cg-key"
+            token_data_module.fetch_token_data = lambda token_name, token_symbol, api_key, session=None, timeout=20: {
+                "id": "usd-coin",
+                "symbol": "usdc",
+            }
+            token_data_module.render_text = lambda payload: f"rendered:{payload['id']}:{payload['symbol']}"
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = token_data_main(token_name="USD Coin", token_symbol="")
+        finally:
+            token_data_module._load_coingecko_api_key = original_load_api_key
+            token_data_module.fetch_token_data = original_fetch
+            token_data_module.render_text = original_render
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(buffer.getvalue().strip(), "rendered:usd-coin:usdc")
+
+    def test_token_market_data_main_returns_success_and_prints_output(self):
+        original_load_api_key = token_market_data_module._load_coingecko_api_key
+        original_fetch = token_market_data_module.fetch_token_market_data
+        original_render = token_market_data_module.render_text
+        try:
+            token_market_data_module._load_coingecko_api_key = lambda: "cg-key"
+            token_market_data_module.fetch_token_market_data = lambda token_names, token_symbols, api_key, session=None, timeout=20: [
+                {"id": "usd-coin", "symbol": "usdc", "name": "USD Coin"}
+            ]
+            token_market_data_module.render_text = lambda rows: f"rendered:{rows[0]['id']}:{rows[0]['symbol']}"
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = token_market_data_main(token_names=["USD Coin"], token_symbols=None)
+        finally:
+            token_market_data_module._load_coingecko_api_key = original_load_api_key
+            token_market_data_module.fetch_token_market_data = original_fetch
+            token_market_data_module.render_text = original_render
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(buffer.getvalue().strip(), "rendered:usd-coin:usdc")
 
     def test_summarize_token_security_result_extracts_flags_and_sections(self):
         raw = {
@@ -1233,20 +1708,11 @@ class ToolsTests(unittest.TestCase):
         )
         self.assertFalse(hasattr(write_report_module, "validate_graph_data_for_origin"))
 
-    def test_write_report_deep_mode_can_ask_user_to_confirm_normal_fallback(self):
-        asks = []
+    def test_write_report_deep_mode_can_use_user_permission_to_confirm_normal_fallback(self):
+        prompts = []
 
         class FakeLLM:
-            def __init__(self):
-                self.calls = []
-
-            def clone(self):
-                return self
-
             def complete(self, messages, **kwargs):
-                self.calls.append((messages, kwargs))
-                if len(self.calls) == 1:
-                    return SimpleNamespace(content="yes")
                 return SimpleNamespace(
                     content=(
                         "<h1>Summary</h1><p>Wallet summary</p>"
@@ -1264,11 +1730,11 @@ class ToolsTests(unittest.TestCase):
 
             def __init__(self):
                 self.llm = FakeLLM()
-                self.ask_user_handler = self.answer
+                self.permission_handler = self.answer
 
-            def answer(self, questions):
-                asks.append(questions)
-                return {questions[0]["question"]: "Generate report directly with the same payload"}
+            def answer(self, payload):
+                prompts.append(payload)
+                return "accept"
 
         tool = write_report_module.WriteReportTool()
         tool.bind_agent(FakeAgent())
@@ -1294,36 +1760,36 @@ class ToolsTests(unittest.TestCase):
             finally:
                 write_report_module.render_graph_html = original_renderer
 
-        self.assertEqual(len(asks), 1)
-        self.assertIn("same payload", asks[0][0]["question"].lower())
+        self.assertEqual(len(prompts), 1)
+        self.assertEqual(prompts[0]["title"], "Report Mode")
+        self.assertEqual(
+            prompts[0]["options"],
+            [
+                {"label": "Accept", "value": "accept"},
+                {"label": "Deny", "value": "deny"},
+            ],
+        )
+        self.assertIn("same payload", prompts[0]["description"].lower())
+        self.assertIn("mode must be deep when agent.mode=deep", prompts[0]["description"])
+        self.assertIn(
+            "relevant_addresses[0].relation must be one of: hop1-counterparty, hop2-counterparty, hop3-counterparty",
+            prompts[0]["description"],
+        )
         self.assertIn("已经在", result)
-        llm = tool._parent_agent.llm
-        self.assertIn("answer only `yes` or `no`", llm.calls[0][1]["system"])
-        self.assertIn("Generate report directly with the same payload", llm.calls[0][0][0]["content"])
-        self.assertIn("GRAPH", llm.calls[1][0][0]["content"])
 
-    def test_write_report_returns_raw_ask_user_answer_when_llm_says_not_to_skip_validation(self):
-        class FakeLLM:
-            def __init__(self):
-                self.calls = []
-
-            def clone(self):
-                return self
-
-            def complete(self, messages, **kwargs):
-                self.calls.append((messages, kwargs))
-                return SimpleNamespace(content="no")
+    def test_write_report_returns_validation_errors_when_user_denies_fallback(self):
+        prompts = []
 
         class FakeAgent:
             mode = "deep"
             deep_mode = True
 
             def __init__(self):
-                self.llm = FakeLLM()
-                self.ask_user_handler = self.answer
+                self.permission_handler = self.answer
 
-            def answer(self, questions):
-                return {questions[0]["question"]: "Please do not skip validation yet."}
+            def answer(self, payload):
+                prompts.append(payload)
+                return "deny"
 
         tool = write_report_module.WriteReportTool()
         tool.bind_agent(FakeAgent())
@@ -1342,7 +1808,11 @@ class ToolsTests(unittest.TestCase):
             content="Wallet report",
         )
 
-        self.assertEqual(result, "Please do not skip validation yet.")
+        self.assertEqual(len(prompts), 1)
+        self.assertIn("Error:", result)
+        self.assertIn("mode must be deep when agent.mode=deep", result)
+        self.assertIn("Error:", result)
+        self.assertIn("relevant_addresses[0].relation must be one of: hop1-counterparty, hop2-counterparty, hop3-counterparty", result)
 
     def test_write_report_build_prompts_include_graph_html_and_english_association_graph_section(self):
         payload = {
@@ -1356,15 +1826,14 @@ class ToolsTests(unittest.TestCase):
             "relevant_addresses": [{"address": "0x1", "relation": "hop1-counterparty"}],
             "sources": ["https://example.com"],
             "content": "Wallet report",
-            "graph_html": '<div class="graph">GRAPH</div>',
         }
 
         user_prompt = write_report_module.build_user_prompt(payload)
         system_prompt = write_report_module.build_system_prompt(payload)
 
-        self.assertIn('"graph_html": "<div class=\\"graph\\">GRAPH</div>"', user_prompt)
-        self.assertIn("Association Graph", system_prompt)
-        self.assertIn("use the graph_html", system_prompt)
+        self.assertNotIn("graph_html", user_prompt)
+        self.assertNotIn("Association Graph", system_prompt)
+        self.assertNotIn("use the graph_html", system_prompt)
         self.assertNotIn("风险概况", system_prompt)
         self.assertNotIn("参考信息源", system_prompt)
 
@@ -1391,16 +1860,117 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("source_address", description)
         self.assertIn("target_address", description)
         self.assertIn("direction", description)
+        self.assertIn("at least 2", description)
+        self.assertIn("address_identity", description)
+        self.assertIn("address_labels", description)
+        self.assertIn("address_balance", description)
+        self.assertIn("address_malicious", description)
+
+    def test_write_report_deep_mode_requires_relevant_address_identity_metadata(self):
+        description = write_report_module.WriteReportTool.parameters["properties"]["relevant_addresses"]["description"]
+
+        self.assertIn("at least 1", description)
+        self.assertIn("balance", description)
+        self.assertIn("labels", description)
+        self.assertIn("identity", description)
+
+        errors = write_report_module.validate_payload(
+            {
+                "type": "address",
+                "mode": "deep",
+                "path": "/tmp/address-report.html",
+                "origin_address": "0xabc",
+                "relevant_addresses": [
+                    {"address": "0x1", "relation": "hop1-counterparty"},
+                ],
+                "graph_data": {
+                    "node": [
+                        {
+                            "address": f"0x{i:040x}",
+                            "chain_name": "Ethereum",
+                            "address_identity": {"entity": f"Node {i}"},
+                            "address_labels": [f"label-{i}"],
+                        }
+                        for i in range(1, 6)
+                    ],
+                    "edge": [
+                        {
+                            "source_address": f"0x{i:040x}",
+                            "target_address": f"0x{i + 1:040x}",
+                            "direction": "from",
+                        }
+                        for i in range(1, 6)
+                    ],
+                },
+                "sources": ["https://example.com"],
+                "content": "Wallet report",
+                "top_holders": [],
+                "top_lp_holders": [],
+                "token_name": "",
+                "token_contract_address": "",
+            }
+        )
+
+        self.assertIn(
+            "relevant_addresses[0] must include at least one of: balance, labels, identity",
+            errors,
+        )
+
+    def test_write_report_deep_mode_requires_graph_node_metadata(self):
+        errors = write_report_module.validate_payload(
+            {
+                "type": "address",
+                "mode": "deep",
+                "path": "/tmp/address-report.html",
+                "origin_address": "0xabc",
+                "relevant_addresses": [
+                    {
+                        "address": "0x1",
+                        "balance": "10",
+                        "relation": "hop1-counterparty",
+                    }
+                ],
+                "graph_data": {
+                    "node": [
+                        {
+                            "address": f"0x{i:040x}",
+                            "chain_name": "Ethereum",
+                            "address_identity": {"entity": f"Node {i}"} if i == 1 else {"entity": f"Node {i}"},
+                            "address_labels": [] if i == 1 else [f"label-{i}"],
+                            "address_balance": {} if i == 1 else {"usd_value": i * 100},
+                            "address_malicious": {} if i == 1 else {"risk_level": "low"},
+                        }
+                        for i in range(1, 6)
+                    ],
+                    "edge": [
+                        {
+                            "source_address": f"0x{i:040x}",
+                            "target_address": f"0x{i + 1:040x}",
+                            "direction": "from",
+                        }
+                        for i in range(1, 6)
+                    ],
+                },
+                "sources": ["https://example.com"],
+                "content": "Wallet report",
+                "top_holders": [],
+                "top_lp_holders": [],
+                "token_name": "",
+                "token_contract_address": "",
+            }
+        )
+
+        self.assertIn(
+            "graph_data.node[0] must include at least two of: address_identity, address_labels, address_balance, address_malicious",
+            errors,
+        )
 
     def test_write_report_render_graph_html_uses_demo_style_node_and_edge_fields(self):
-        recorded = {"nodes": [], "edges": [], "barnes_hut": 0, "options": []}
+        recorded = {"nodes": [], "edges": [], "options": []}
 
         class FakeNetwork:
             def __init__(self, **kwargs):
                 self.kwargs = kwargs
-
-            def barnes_hut(self):
-                recorded["barnes_hut"] += 1
 
             def set_options(self, options):
                 recorded["options"].append(options)
@@ -1465,7 +2035,6 @@ class ToolsTests(unittest.TestCase):
 
         self.assertIn('class="relationship-graph"', html)
         self.assertIn("function htmlTitle(html)", html)
-        self.assertEqual(recorded["barnes_hut"], 1)
         self.assertEqual(len(recorded["options"]), 1)
         self.assertIn('"navigationButtons": true', recorded["options"][0])
         self.assertEqual(recorded["nodes"][0][0], "0x1111111111111111111111111111111111111111")
@@ -1481,6 +2050,7 @@ class ToolsTests(unittest.TestCase):
 
     def test_wrap_html_document_includes_vis_network_assets_when_graph_section_exists(self):
         document = write_report_module.wrap_html_document(
+            "# Demo Report",
             '<section class="relationship-graph"><div id="mynetwork"></div><script>new vis.Network()</script></section>',
             "Demo Report",
         )
@@ -1489,6 +2059,29 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("vis-network.min.js", document)
         self.assertIn("#mynetwork", document)
         self.assertIn("height: 860px", document)
+        self.assertIn("Appendix: Association Graph", document)
+        self.assertIn("<h1>Demo Report</h1>", document)
+
+    def test_wrap_html_document_renders_markdown_without_graph_appendix_when_graph_is_empty(self):
+        document = write_report_module.wrap_html_document(
+            "# Summary\n\n- Item 1\n- Item 2",
+            "",
+            "Demo Report",
+        )
+
+        self.assertIn("<h1>Summary</h1>", document)
+        self.assertIn("<li>Item 1</li>", document)
+        self.assertNotIn("Appendix: Association Graph", document)
+        self.assertNotIn("vis-network.min.js", document)
+
+    def test_wrap_html_document_renders_markdown_bold_text(self):
+        document = write_report_module.wrap_html_document(
+            "# Summary\n\n**High Risk** wallet activity",
+            "",
+            "Demo Report",
+        )
+
+        self.assertIn("<strong>High Risk</strong> wallet activity", document)
 
     def test_write_report_generates_address_report_and_embeds_graph(self):
         class FakeLLM:
@@ -1502,14 +2095,13 @@ class ToolsTests(unittest.TestCase):
                 self.calls.append((messages, kwargs))
                 return SimpleNamespace(
                     content=(
-                        "<h1>Summary</h1><p>Wallet summary</p>"
-                        "<h2>Risk Overview</h2><p>Low</p>"
-                        "<h2>Asset Overview</h2><p>Healthy</p>"
-                        "<h2>Transaction Overview</h2><p>Active</p>"
-                        "<h2>Relevant Addresses</h2>"
-                        "<table><tr><th>Address</th></tr><tr><td>0x1</td></tr></table>"
-                        "<h2>Association Graph</h2><div class='graph'>GRAPH</div>"
-                        "<h2>Sources</h2><ul><li>src</li></ul>"
+                        "# Summary\n\nWallet summary\n\n"
+                        "## Risk Overview\n\nLow\n\n"
+                        "## Asset Overview\n\nHealthy\n\n"
+                        "## Transaction Overview\n\nActive\n\n"
+                        "## Relevant Addresses\n\n"
+                        "| Address |\n| --- |\n| 0x1 |\n\n"
+                        "## Sources\n\n- src"
                     )
                 )
 
@@ -1546,6 +2138,7 @@ class ToolsTests(unittest.TestCase):
                                 "address": f"0x{i:040x}",
                                 "chain_name": "Ethereum",
                                 "address_identity": {"entity": f"Node {i}"},
+                                "address_labels": [f"label-{i}"],
                             }
                             for i in range(1, 6)
                         ],
@@ -1569,14 +2162,16 @@ class ToolsTests(unittest.TestCase):
             report_html = output_path.read_text()
             self.assertIn("GRAPH", report_html)
             self.assertIn("Wallet summary", report_html)
+            self.assertIn("Appendix: Association Graph", report_html)
+            self.assertNotIn("<h2>Association Graph</h2><div class='graph'>GRAPH</div>", report_html)
 
         llm = tool._parent_agent.llm
         self.assertEqual(len(llm.calls), 1)
         messages, kwargs = llm.calls[0]
         self.assertIn("origin_address", messages[0]["content"])
-        self.assertIn("graph_html", messages[0]["content"])
+        self.assertNotIn("graph_html", messages[0]["content"])
         self.assertIn("Relevant Addresses", kwargs["system"])
-        self.assertIn("Association Graph", kwargs["system"])
+        self.assertNotIn("Association Graph", kwargs["system"])
         self.assertIn("must call write_report", kwargs["system"])
         self.assertIn("If the report mode is `deep`, make it thorough", kwargs["system"])
 
@@ -1590,11 +2185,11 @@ class ToolsTests(unittest.TestCase):
                 self.kwargs = kwargs
                 return SimpleNamespace(
                     content=(
-                        "<h1>Summary</h1><p>Token summary</p>"
-                        "<h2>风险概况</h2><p>Medium</p>"
-                        "<h2>Top Holders概况</h2><p>Holder notes</p>"
-                        "<h2>Top LP Holders概况</h2><p>LP notes</p>"
-                        "<h2>参考信息源</h2><ul><li>src</li></ul>"
+                        "# Summary\n\nToken summary\n\n"
+                        "## 风险概况\n\nMedium\n\n"
+                        "## Top Holders概况\n\nHolder notes\n\n"
+                        "## Top LP Holders概况\n\nLP notes\n\n"
+                        "## 参考信息源\n\n- src"
                     )
                 )
 

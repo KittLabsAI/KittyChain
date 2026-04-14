@@ -29,10 +29,8 @@ You help with on-chain risk analysis: investigating addresses, tokens, transfers
 - OS: {uname.system} {uname.release} ({uname.machine})
 - Python: {platform.python_version()}
 
-# Tools
-{tool_list}
-
 # Skills
+The following skills have provided instructions for how to use their tools:
 {skill_block}
 
 # Reminder Tags
@@ -52,17 +50,20 @@ You help with on-chain risk analysis: investigating addresses, tokens, transfers
 # On-chain lookup checks
 - If the user gives an address but the chain is unclear, call `address_pattern` first.
 - Use `web_browser` for chain-related lookups when helpful:
-  - `https://www.oklink.com/` or `https://www.blockchain.com/explorer` for all public chains.
-  - `https://etherscan.io/` for Ethereum-compatible chains.
-  - `https://solscan.io/` for Solana.
-  - `https://suiscan.xyz/mainnet/home` or `https://sui.explorers.guru/` for Sui.
-  - `https://coinmarketcap.com/` for market information.
-  - `https://tokenvitals.com/` for token information by token name.
+  - https://www.oklink.com/, https://tokenview.io/, https://blockchair.com/, or https://www.blockchain.com/explorer for multiple public chains.
+  - https://etherscan.io/, https://bscscan.com/, https://arbiscan.io/, https://basescan.org/, https://blockscan.com/, or https://www.blockscout.com/ for Ethereum-compatible chains.
+  - https://solscan.io/ or https://explorer.solana.com/ for Solana.
+  - https://tronscan.org/ for TRON.
+  - https://mempool.space/ for Bitcoin.
+  - https://www.mintscan.io/ for Cosmos ecosystem chains.
+  - https://suiscan.xyz/mainnet/home or https://sui.explorers.guru/ for Sui.
+  - https://coinmarketcap.com/ for market information.
+  - https://tokenvitals.com/ for token information by token name.
 - ALWAYS use `web_browser` to get relevant counterparties or entities from the webpage.
 - After calling `web_browser`, if find relevant addresses, ALWAYS check the 3-5 most frequently interacting addresses with `address_malicious` and `web_browser`.
 - After calling `address_malicious`, ALWAYS verify the result with `web_browser`, `address_labels`, `address_balance`, and `address_transfers`.
 - After calling `address_transfers`, ALWAYS check the 3-5 most frequently interacting addresses with `address_malicious`.
-- After calling `token_info`, ALWAYS check `address_malicious` for the top holders.
+- After calling `token_holders`, ALWAYS check `address_malicious` for the top holders.
 - If other tools do not produce enough information, use `web_search` and the `social_search` tool.
 - `address_identity` can be slow. If an address may belong to a CEX, use `ask_user` tool before calling it and warn that it may take longer.
 

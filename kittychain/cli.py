@@ -29,12 +29,13 @@ from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.document import Document
-from prompt_toolkit.filters import has_focus
+from prompt_toolkit.filters import Condition, has_focus
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
 from prompt_toolkit.layout import Layout
-from prompt_toolkit.layout.containers import Float, FloatContainer, HSplit, Window
+from prompt_toolkit.layout.containers import ConditionalContainer, Float, FloatContainer, HSplit, VSplit, Window
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.menus import CompletionsMenu
@@ -154,6 +155,9 @@ _APP_STYLE = Style.from_dict(
         "startup.text": "fg:#6b7280",
         "startup.frame": "fg:#d68786",
         "startup.cat": "fg:#d68786",
+        "permission.modal": "fg:#f8fafc bg:#1f2937",
+        "permission.modal.option": "fg:#cbd5e1 bg:#1f2937",
+        "permission.modal.selected": "fg:#111827 bg:#f2c94c bold",
     }
 )
 
@@ -358,6 +362,7 @@ def _run_once(agent: Agent, prompt: str):
 
     agent.on_brief_message = on_brief
     agent.ask_user_handler = _non_interactive_ask_user
+    agent.permission_handler = _non_interactive_permission_user
 
     response = agent.chat(prompt, on_token=on_token, on_tool=on_tool, mode=mode)
     assistant_stream.finish()
@@ -495,6 +500,8 @@ def _repl(agent: Agent, config: Config):
 
         def on_tool(name, kwargs):
             assistant_stream.finish()
+            if _should_hide_tool_call(name):
+                return
             _show_tool_call(input_reader, name, kwargs)
 
         def on_brief(payload):
@@ -504,10 +511,13 @@ def _repl(agent: Agent, config: Config):
                 input_reader.print(line)
 
         def on_tool_output(name, text):
-            if name not in {"web_browser", "ask_user"} or not text:
+            if not text:
+                return
+            display_text = _tool_output_display_text(name, text)
+            if not display_text:
                 return
             assistant_stream.finish()
-            input_reader.write_raw(_truncate_web_browser_output(text), role="tool", kind="plain")
+            input_reader.write_raw(display_text, role="tool", kind="plain")
 
         cancel_event = threading.Event()
         input_reader.attach_cancel_event(cancel_event)
@@ -522,6 +532,7 @@ def _repl(agent: Agent, config: Config):
                 on_tool=on_tool,
                 on_tool_output=on_tool_output,
                 ask_user=lambda questions: _ask_user_questions(input_reader, questions),
+                permission_user=lambda payload: _select_user_permission(input_reader, payload),
                 on_brief=on_brief,
                 cancel_event=cancel_event,
                 enable_tty_monitor=False,
@@ -745,6 +756,10 @@ def _non_interactive_ask_user(_questions):
     raise RuntimeError("ask_user is only available in interactive mode")
 
 
+def _non_interactive_permission_user(_payload):
+    raise RuntimeError("user_permission is only available in interactive mode")
+
+
 def _ask_user_questions(io, questions: list[dict]) -> dict[str, str]:
     answers: dict[str, str] = {}
 
@@ -775,6 +790,14 @@ def _ask_user_questions(io, questions: list[dict]) -> dict[str, str]:
             )
 
     return answers
+
+
+def _select_user_permission(io, payload: dict) -> str | None:
+    return io.select_option(
+        title=str(payload.get("title", "Permission Required")),
+        description=str(payload.get("description", "")),
+        options=list(payload.get("options") or []),
+    )
 
 
 def _format_question_prompt(item: dict) -> str:
@@ -1023,11 +1046,23 @@ def _filter_think_display_text(text: str) -> str:
     return "".join(visible)
 
 
-def _truncate_web_browser_output(text: str, max_lines: int = 5) -> str:
+def _truncate_tool_output(text: str, max_lines: int = 5) -> str:
     if not text:
         return ""
     lines = text.splitlines()
     return "\n".join(lines[:max_lines])
+
+
+def _should_hide_tool_call(name: str) -> bool:
+    return name in {"todo_write", "brief"}
+
+
+def _tool_output_display_text(name: str, text: str) -> str:
+    if name in {"todo_write", "brief"}:
+        return text
+    if name in {"web_browser", "ask_user", "write_report"}:
+        return _truncate_tool_output(text)
+    return ""
 
 
 def _render_markdown(text: str):
@@ -1378,6 +1413,16 @@ class _HistoryItem:
     role: str
     kind: str
     text: str
+
+
+@dataclass
+class _PermissionModalState:
+    title: str
+    description: str
+    options: list[dict[str, str]]
+    selected_index: int
+    done: threading.Event
+    result: dict[str, str | None]
 
 
 def _merge_prompt_toolkit_styles(*styles: str) -> str:
@@ -1744,6 +1789,7 @@ class _ReadlineInput:
         self._prompt_result = ""
 
         self._active_cancel_event: threading.Event | None = None
+        self._permission_modal: _PermissionModalState | None = None
 
         self._input_history: list[str] = []
         self._input_history_index = 0
@@ -1795,6 +1841,34 @@ class _ReadlineInput:
             height=1,
             dont_extend_height=True,
         )
+        self._permission_modal_window = Window(
+            content=FormattedTextControl(
+                self._render_permission_modal_fragments,
+                focusable=True,
+                show_cursor=False,
+            ),
+            wrap_lines=True,
+            always_hide_cursor=True,
+            dont_extend_width=True,
+            dont_extend_height=True,
+            width=Dimension(preferred=76, max=76),
+        )
+        self._permission_modal_overlay = ConditionalContainer(
+            content=HSplit(
+                [
+                    Window(height=Dimension(weight=1), char=" "),
+                    VSplit(
+                        [
+                            Window(width=Dimension(weight=1), char=" "),
+                            self._permission_modal_window,
+                            Window(width=Dimension(weight=1), char=" "),
+                        ]
+                    ),
+                    Window(height=Dimension(weight=1), char=" "),
+                ]
+            ),
+            filter=Condition(lambda: self._permission_modal is not None),
+        )
 
         self.layout = Layout(
             FloatContainer(
@@ -1814,7 +1888,16 @@ class _ReadlineInput:
                         content=CompletionsMenu(max_height=8),
                         attach_to_window=self.input_area.window,
                         allow_cover_cursor=False,
-                    )
+                    ),
+                    Float(
+                        top=0,
+                        bottom=0,
+                        left=0,
+                        right=0,
+                        z_index=10,
+                        hide_when_covering_content=False,
+                        content=self._permission_modal_overlay,
+                    ),
                 ],
             ),
             focused_element=self.input_area,
@@ -1918,6 +2001,30 @@ class _ReadlineInput:
     def clear_history(self) -> None:
         self._call_in_ui_thread(self._clear_history_ui, wait=False)
 
+    def select_option(self, title: str, description: str, options: list[dict[str, str]]) -> str | None:
+        if not options:
+            raise ValueError("options must contain at least one item")
+
+        done = threading.Event()
+        result: dict[str, str | None] = {"value": None}
+
+        def begin():
+            self._finalize_transient_output_ui()
+            self._permission_modal = _PermissionModalState(
+                title=title.strip() or "Permission Required",
+                description=description.strip(),
+                options=list(options),
+                selected_index=0,
+                done=done,
+                result=result,
+            )
+            self.layout.focus(self._permission_modal_window)
+            self.application.invalidate()
+
+        self._call_in_ui_thread(begin, wait=False)
+        done.wait()
+        return result.get("value")
+
     # -------------------------
     # accept / submit
     # -------------------------
@@ -1984,6 +2091,28 @@ class _ReadlineInput:
     # -------------------------
     def _build_key_bindings(self) -> KeyBindings:
         key_bindings = KeyBindings()
+        permission_modal_active = Condition(lambda: self._permission_modal is not None)
+
+        @key_bindings.add("up", filter=permission_modal_active, eager=True)
+        def _permission_previous(_event):
+            self._move_permission_selection_ui(-1)
+
+        @key_bindings.add("down", filter=permission_modal_active, eager=True)
+        def _permission_next(_event):
+            self._move_permission_selection_ui(1)
+
+        @key_bindings.add("enter", filter=permission_modal_active, eager=True)
+        def _permission_confirm(_event):
+            self._confirm_permission_selection_ui()
+
+        @key_bindings.add("escape", filter=permission_modal_active, eager=True)
+        def _permission_cancel(_event):
+            self._cancel_permission_selection_ui()
+
+        @key_bindings.add(Keys.Any, filter=permission_modal_active, eager=True)
+        def _permission_pick(event):
+            if event.data.isdigit():
+                self._select_permission_option_ui(int(event.data) - 1)
 
         @key_bindings.add("c-c")
         @key_bindings.add("c-d")
@@ -2048,6 +2177,49 @@ class _ReadlineInput:
         self._update_input_area_height_ui()
         self.application.invalidate()
 
+    def _render_permission_modal_fragments(self):
+        modal = self._permission_modal
+        if modal is None:
+            return []
+
+        width = max(min(self._history_render_width() - 8, 72), 32)
+        inner_width = max(width - 4, 1)
+        lines: list[tuple[str, str]] = []
+
+        border = "+" + "-" * (width - 2) + "+"
+        lines.append(("class:permission.modal", border + "\n"))
+        lines.append(
+            (
+                "class:permission.modal",
+                "| " + _pad_visible(modal.title, inner_width, align="center") + " |\n",
+            )
+        )
+        lines.append(("class:permission.modal", "|" + " " * (width - 2) + "|\n"))
+
+        wrapped_description = textwrap.wrap(modal.description or "", width=max(inner_width, 1)) or [""]
+        for segment in wrapped_description:
+            lines.append(("class:permission.modal", "| " + _pad_visible(segment, inner_width) + " |\n"))
+
+        lines.append(("class:permission.modal", "|" + " " * (width - 2) + "|\n"))
+        for index, option in enumerate(modal.options, 1):
+            selected = index - 1 == modal.selected_index
+            prefix = ">" if selected else " "
+            label = f"{prefix} {index}. {option['label']}"
+            style = "class:permission.modal.selected" if selected else "class:permission.modal.option"
+            lines.append((style, "| " + _pad_visible(label, inner_width) + " |\n"))
+
+        lines.append(("class:permission.modal", "|" + " " * (width - 2) + "|\n"))
+        lines.append(
+            (
+                "class:permission.modal",
+                "| "
+                + _pad_visible("Use Up/Down or 1-9, Enter confirms, Esc cancels", inner_width)
+                + " |\n",
+            )
+        )
+        lines.append(("class:permission.modal", border))
+        return lines
+
     def _enter_history_copy_mode_ui(self) -> None:
         self._history_copy_mode = True
         self.layout.focus(self.history_window.content)
@@ -2056,6 +2228,40 @@ class _ReadlineInput:
     def _exit_history_copy_mode_ui(self) -> None:
         self._history_copy_mode = False
         self.history_buffer.exit_selection()
+        self.layout.focus(self.input_area)
+        self.application.invalidate()
+
+    def _move_permission_selection_ui(self, delta: int) -> None:
+        if self._permission_modal is None or not self._permission_modal.options:
+            return
+        total = len(self._permission_modal.options)
+        self._permission_modal.selected_index = (self._permission_modal.selected_index + delta) % total
+        self.application.invalidate()
+
+    def _select_permission_option_ui(self, index: int) -> None:
+        if self._permission_modal is None:
+            return
+        if not 0 <= index < len(self._permission_modal.options):
+            return
+        self._permission_modal.selected_index = index
+        self._confirm_permission_selection_ui()
+
+    def _confirm_permission_selection_ui(self) -> None:
+        if self._permission_modal is None:
+            return
+        selected = self._permission_modal.options[self._permission_modal.selected_index]["value"]
+        self._finish_permission_modal_ui(selected)
+
+    def _cancel_permission_selection_ui(self) -> None:
+        self._finish_permission_modal_ui(None)
+
+    def _finish_permission_modal_ui(self, value: str | None) -> None:
+        modal = self._permission_modal
+        if modal is None:
+            return
+        modal.result["value"] = value
+        modal.done.set()
+        self._permission_modal = None
         self.layout.focus(self.input_area)
         self.application.invalidate()
 
@@ -2536,6 +2742,7 @@ def _run_agent_with_escape_interrupt(
     on_tool=None,
     on_tool_output=None,
     ask_user=None,
+    permission_user=None,
     on_brief=None,
     cancel_event: threading.Event | None = None,
     enable_tty_monitor: bool = True,
@@ -2545,6 +2752,7 @@ def _run_agent_with_escape_interrupt(
     callback_gate.set()
     run = agent.begin_run() if hasattr(agent, "begin_run") else None
     pending_questions: queue.Queue[tuple[list[dict], dict, threading.Event]] = queue.Queue()
+    pending_permissions: queue.Queue[tuple[dict, dict, threading.Event]] = queue.Queue()
     result: dict[str, str] = {}
     error: dict[str, BaseException] = {}
 
@@ -2566,6 +2774,11 @@ def _run_agent_with_escape_interrupt(
                         pending_questions,
                         cancel_event,
                         ask_user,
+                    )
+                    agent.permission_handler = _make_permission_bridge(
+                        pending_permissions,
+                        cancel_event,
+                        permission_user,
                     )
                     agent.on_brief_message = _guard(on_brief)
                     agent.tool_output_handler = _guard(on_tool_output)
@@ -2609,6 +2822,7 @@ def _run_agent_with_escape_interrupt(
     if monitor is None:
         while thread.is_alive():
             _service_user_question_requests(pending_questions, ask_user, cancel_event)
+            _service_permission_requests(pending_permissions, permission_user, cancel_event)
             if cancel_event.is_set():
                 interrupted = True
                 break
@@ -2617,6 +2831,7 @@ def _run_agent_with_escape_interrupt(
         with monitor:
             while thread.is_alive():
                 _service_user_question_requests(pending_questions, ask_user, cancel_event)
+                _service_permission_requests(pending_permissions, permission_user, cancel_event)
                 if cancel_event.is_set() or monitor.poll(0.05):
                     interrupted = True
                     break
@@ -2628,11 +2843,13 @@ def _run_agent_with_escape_interrupt(
             interrupted_run = agent.snapshot_run(run, repair_messages=True)
         callback_gate.clear()
         _cancel_pending_user_question_requests(pending_questions)
+        _cancel_pending_permission_requests(pending_permissions)
         if interrupted_run is not None:
             agent.commit_run(interrupted_run)
         return "(interrupted)", True, agent
 
     _service_user_question_requests(pending_questions, ask_user, cancel_event)
+    _service_permission_requests(pending_permissions, permission_user, cancel_event)
     thread.join()
     callback_gate.clear()
 
@@ -2665,6 +2882,25 @@ def _make_ask_user_bridge(pending_questions, cancel_event, ask_user):
     return bridge
 
 
+def _make_permission_bridge(pending_permissions, cancel_event, permission_user):
+    if permission_user is None:
+        return _non_interactive_permission_user
+
+    def bridge(payload):
+        result: dict[str, object] = {}
+        done = threading.Event()
+        pending_permissions.put((payload, result, done))
+        while not done.wait(0.05):
+            if cancel_event.is_set():
+                raise CancellationRequested()
+        error = result.get("error")
+        if error is not None:
+            raise error
+        return result.get("value")
+
+    return bridge
+
+
 def _service_user_question_requests(pending_questions, ask_user, cancel_event) -> None:
     if ask_user is None:
         _cancel_pending_user_question_requests(pending_questions)
@@ -2692,6 +2928,33 @@ def _service_user_question_requests(pending_questions, ask_user, cancel_event) -
             done.set()
 
 
+def _service_permission_requests(pending_permissions, permission_user, cancel_event) -> None:
+    if permission_user is None:
+        _cancel_pending_permission_requests(pending_permissions)
+        return
+
+    while True:
+        try:
+            payload, result, done = pending_permissions.get_nowait()
+        except queue.Empty:
+            return
+
+        if cancel_event.is_set():
+            result["error"] = CancellationRequested()
+            done.set()
+            continue
+
+        try:
+            result["value"] = permission_user(payload)
+        except (EOFError, KeyboardInterrupt):
+            cancel_event.set()
+            result["error"] = CancellationRequested()
+        except Exception as exc:  # pragma: no cover - defensive transport
+            result["error"] = exc
+        finally:
+            done.set()
+
+
 def _cancel_pending_user_question_requests(pending_questions) -> None:
     while True:
         try:
@@ -2699,6 +2962,16 @@ def _cancel_pending_user_question_requests(pending_questions) -> None:
         except queue.Empty:
             return
         payload["error"] = CancellationRequested()
+        done.set()
+
+
+def _cancel_pending_permission_requests(pending_permissions) -> None:
+    while True:
+        try:
+            _payload, result, done = pending_permissions.get_nowait()
+        except queue.Empty:
+            return
+        result["error"] = CancellationRequested()
         done.set()
 
 

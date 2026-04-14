@@ -9,8 +9,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # type: ignore
+    from hooks.user_permission import request_user_permission  # type: ignore
 else:
     from .base import Tool
+    from ..hooks.user_permission import request_user_permission
 
 
 class EditTool(Tool):
@@ -50,6 +52,22 @@ Include enough surrounding context to ensure uniqueness.
         if count > 1:
             return f"Error: old_string appears {count} times in {file_path}"
         new_content = content.replace(old_string, new_string, 1)
+        agent = getattr(self, "_parent_agent", None)
+        if agent is not None:
+            try:
+                decision = request_user_permission(
+                    agent,
+                    description=f"Allow the agent to edit {path}?",
+                    options=[
+                        {"label": "Allow", "value": "allow"},
+                        {"label": "Deny", "value": "deny"},
+                    ],
+                    title="File Permission",
+                )
+            except (RuntimeError, ValueError) as exc:
+                return f"Error: {exc}"
+            if decision != "allow":
+                return "User denied permission grant"
         path.write_text(new_content)
         diff = "".join(
             difflib.unified_diff(

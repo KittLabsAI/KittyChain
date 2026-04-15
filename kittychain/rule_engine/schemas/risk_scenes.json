@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-04-15T00:00:00Z",
+  "scenes": [
+    {
+      "scene_key": "demo",
+      "scene_name": "Demo Scene",
+      "description": "Demo risk controls.",
+      "status": "active",
+      "scene_path": "schemas/scenes/demo",
+      "entry_workflow_id": "workflow_demo_main",
+      "owners": [
+        "risk-team"
+      ],
+      "tags": [
+        "registration",
+        "fraud"
+      ],
+      "created_at": "2026-04-15T10:00:00Z",
+      "updated_at": "2026-04-15T10:00:00Z"
+    },
+    {
+      "scene_key": "register",
+      "scene_name": "用户注册",
+      "description": "用户注册",
+      "status": "active",
+      "scene_path": "schemas/scenes/register",
+      "entry_workflow_id": "workflow_register_main",
+      "owners": [
+        "vito",
+        "harrell",
+        "jim.chen",
+        "polo.yang",
+        "may.huang",
+        "yunnie.wan",
+        "Jimmy Ye",
+        "Leo Z Liu",
+        "darcy.chen",
+        "Rubbie",
+        "Jayson Li",
+        "Mike He",
+        "Logic Zhu"
+      ],
+      "tags": [
+        "register"
+      ],
+      "created_at": "2026-03-01",
+      "updated_at": "2026-03-01"
+    }
+  ]
+}

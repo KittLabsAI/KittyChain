@@ -11,7 +11,7 @@ The engine is designed around a stable JSON package instead of direct CSV or Mar
 - node and rule inspection
 - variable browsing
 - historical decision search
-- future adapters that normalize user-provided source files into one standard format
+- future adapters that normalize user-provided files into one standard format
 
 This first version focuses on clear standards and development boundaries. It does not assume compatibility with the existing `strategy_simulation` or `read_*` tools.
 
@@ -20,8 +20,8 @@ This first version focuses on clear standards and development boundaries. It doe
 - Use JSON as the canonical internal format.
 - Separate scene-local data from cross-scene shared data.
 - Keep workflow structure, node membership, rule definitions, variable definitions, and history records as different concerns.
-- Preserve traceability back to source systems whenever possible.
 - Do not guess business meaning when source data is ambiguous.
+- Keep the standardized JSON package self-sufficient so the engine can run without original source files.
 
 ## Directory Layout
 
@@ -129,7 +129,63 @@ A rule is the smallest decision unit in the engine. A normalized rule contains:
 - assignment expression
 - action
 - reason codes
-- source trace
+
+### Expression Format
+
+Normalized rule expressions should use structured JSON rather than raw source-system expression strings.
+
+Supported operators in `hit_expression`:
+
+- `=`
+- `!=`
+- `>`
+- `>=`
+- `<`
+- `in`
+- `not in`
+- `exist`
+- `not exist`
+- `is true`
+- `is false`
+- `start with`
+- `and`
+- `or`
+
+Formatting rules:
+
+- `hit_expression` should contain only normalized hit logic.
+- Atomic hit expressions use objects such as `{"var": "ip国家码(解析)", "operator": "in", "value": ["US", "FR"]}`.
+- Function operands use nested objects such as `{"function": "解密函数", "args": ["邮箱域名(aes密文)"]}`.
+- Boolean composition uses binary objects such as `{"and": [expr1, expr2]}` or `{"or": [expr1, expr2]}`.
+- `and` and `or` only combine two expressions at a time.
+- Parentheses in the source expression define grouping priority. Without grouping, boolean expressions are combined in source order.
+- `assignment_expression` should contain only post-hit assignments.
+- `assignment_expression` uses an array of assignment objects such as `[{"var": "risk_level", "operator": "set", "value": "high"}]`.
+- `assignment_expression` must not use string forms like `set a = b`.
+
+### Data Types
+
+The rule engine supports these normalized variable data types:
+
+- `double`
+- `string`
+- `long`
+- `list`
+- `bool`
+- `map`
+- `other`
+
+For adapter-generated variables that come from a source `data_type` field, the mapping is:
+
+- `1` -> `double`
+- `2` -> `string`
+- `3` -> `long`
+- `4` -> `list`
+- `5` -> `bool`
+- `6` -> `map`
+- `7` -> `other`
+
+If a source dataset uses an out-of-range or undocumented type code, the adapter should normalize it to `other` rather than guessing a narrower type.
 
 ### Variable
 
@@ -152,7 +208,6 @@ A history record is one normalized execution event. It should preserve:
 - hit rules
 - strategy result
 - reason codes
-- source trace
 
 ## Relationship Model
 
@@ -184,6 +239,7 @@ user_labels.json
 - `reason_codes` must always be an array.
 - `inputs` and `derived_variables` must always be JSON objects.
 - Stable source IDs should be preserved when available.
+- The standard schema should not include a top-level `source` field in rules, history records, or user labels.
 - If a field is unknown, use `null`, `{}`, or `[]` based on the expected type rather than guessing.
 - If `strategy_result` is `pass` but `reason_codes` is not empty, the record is still an explicit decision record and must not be treated as a miss.
 
@@ -287,15 +343,19 @@ The example below shows one scene called `register`.
       "rule_name_cn": "Email registrations exceed threshold in 24h",
       "status": "active",
       "priority": 6,
-      "hit_expression": "e.hourEmailUseNumberHit = true",
-      "assignment_expression": "",
+      "hit_expression": {
+        "var": "hourEmailUseNumberHit",
+        "operator": "is true"
+      },
+      "assignment_expression": [
+        {
+          "var": "risk_level",
+          "operator": "set",
+          "value": "review"
+        }
+      ],
       "action": "review",
       "reason_codes": ["EMAIL_24H_THRESHOLD"],
-      "source": {
-        "source_system": "legacy_csv",
-        "source_file": "node_rules.csv",
-        "mapping_method": "direct"
-      },
       "metadata": {}
     }
   ]
@@ -323,7 +383,7 @@ The example below shows one scene called `register`.
       "variable_key": "hour_email_use_number_hit",
       "variable_name": "Email threshold hit in 24h",
       "scope": "derived",
-      "data_type": "boolean",
+      "data_type": "bool",
       "description": "Whether the email count threshold was hit.",
       "source_path": "e.hourEmailUseNumberHit",
       "default_value": false,
@@ -374,11 +434,6 @@ The example below shows one scene called `register`.
       "strategy_result": "review",
       "reason_codes": ["EMAIL_24H_THRESHOLD"],
       "final_decision": "review",
-      "source": {
-        "source_system": "legacy_csv",
-        "source_file": "rule_hits.csv",
-        "mapping_method": "direct"
-      },
       "raw_refs": {}
     }
   ]
@@ -397,10 +452,6 @@ The example below shows one scene called `register`.
       "label_type": "risk_outcome",
       "scene_key": "register",
       "applied_at": "2026-03-01T00:00:00Z",
-      "source": {
-        "source_system": "legacy_csv",
-        "source_file": "user_labels.csv"
-      },
       "metadata": {}
     }
   ]

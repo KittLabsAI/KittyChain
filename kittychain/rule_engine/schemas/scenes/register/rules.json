@@ -1,0 +1,5649 @@
+{
+  "scene_key": "register",
+  "rules": [
+    {
+      "rule_id": "Web_SM_Device_MediumRisk",
+      "rule_name": "Web_SM_Device_MediumRisk",
+      "rule_name_cn": "WEB数美中危设备检测",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "数美设备指纹策略命中结果",
+            "operator": "=",
+            "value": "MEDIUM"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "Web_SM_Device_HighRisk",
+      "rule_name": "Web_SM_Device_HighRisk",
+      "rule_name_cn": "WEB数美高危设备检测",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "数美设备指纹策略命中结果",
+            "operator": "=",
+            "value": "HIGH"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "r_web_finger_examption",
+      "rule_name": "r_web_finger_examption",
+      "rule_name_cn": "web设备指纹聚集豁免",
+      "status": "inactive",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "and": [
+                          {
+                            "and": [
+                              {
+                                "var": "是否web端",
+                                "operator": "is true"
+                              },
+                              {
+                                "var": "6个月内在当前fingerId上注册IP对应的去重国家数",
+                                "operator": ">",
+                                "value": 10
+                              }
+                            ]
+                          },
+                          {
+                            "var": "6个月内在当前fingerId上注册IP对应的去重国家-城市数",
+                            "operator": ">",
+                            "value": 50
+                          }
+                        ]
+                      },
+                      {
+                        "var": "6个月内在当前fingerId上注册IP对应的去重国家-城市数",
+                        "operator": ">",
+                        "value": "6个月内当前fingerId上注册的去重用户数量 * 0.3"
+                      }
+                    ]
+                  },
+                  {
+                    "and": [
+                      {
+                        "var": "6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+                        "operator": ">",
+                        "value": 0
+                      },
+                      {
+                        "var": "7天内当前fingerId当前IP对应的国家上注册的去重用户数量 / 6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+                        "operator": "<",
+                        "value": 0.9
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "and": [
+                  {
+                    "var": "6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+                    "operator": ">",
+                    "value": 0
+                  },
+                  {
+                    "var": "6个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量 / 6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+                    "operator": "<",
+                    "value": 0.9
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "and": [
+              {
+                "var": "6个月内当前fingerId上注册的去重用户数量",
+                "operator": ">",
+                "value": 0
+              },
+              {
+                "var": "6个月内当前fingerId当前IP对应的国家上注册的去重用户数量 / 6个月内当前fingerId上注册的去重用户数量",
+                "operator": "<",
+                "value": 0.9
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "设备指纹web聚集豁免",
+          "operator": "set",
+          "value": 1
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "whiteCountry",
+      "rule_name": "whiteCountry",
+      "rule_name_cn": "特殊国家群体",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "ip国家码(解析)",
+            "operator": "in",
+            "value": [
+              "US",
+              "FR",
+              "GB",
+              "DE",
+              "CA"
+            ]
+          },
+          {
+            "var": {
+              "function": "解密函数",
+              "args": [
+                "邮箱域名(aes密文)"
+              ]
+            },
+            "operator": "in",
+            "value": [
+              "gmail.com",
+              "outlook.com"
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "特殊国家注册用户",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "SM_30dWebDeviceUseNumberHit",
+      "rule_name": "SM_30dWebDeviceUseNumberHit",
+      "rule_name_cn": "新设备-WEB设备30d聚集",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "注册用户IP",
+                "operator": "not in",
+                "value": "IP白名单"
+              },
+              {
+                "var": "数美设备指纹",
+                "operator": "exist"
+              }
+            ]
+          },
+          {
+            "var": "新设备-同设备30d注册量",
+            "operator": ">=",
+            "value": 8
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中30天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_7dWebDeviceUseNumberHit",
+      "rule_name": "SM_7dWebDeviceUseNumberHit",
+      "rule_name_cn": "新设备-WEB设备7d聚集",
+      "status": "active",
+      "priority": 6,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "注册用户IP",
+                "operator": "not in",
+                "value": "IP白名单"
+              },
+              {
+                "var": "数美设备指纹",
+                "operator": "exist"
+              }
+            ]
+          },
+          {
+            "var": "新设备-同设备7d注册量",
+            "operator": ">=",
+            "value": 6
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中7天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_24hWebDeviceUseNumberHit",
+      "rule_name": "SM_24hWebDeviceUseNumberHit",
+      "rule_name_cn": "新设备-WEB设备24小时聚集",
+      "status": "active",
+      "priority": 7,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "注册用户IP",
+                "operator": "not in",
+                "value": "IP白名单"
+              },
+              {
+                "var": "数美设备指纹",
+                "operator": "exist"
+              }
+            ]
+          },
+          {
+            "var": "新设备-相同设备24h注册量",
+            "operator": ">=",
+            "value": 4
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中24小时同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_1hWebDeviceUseNumberHit",
+      "rule_name": "SM_1hWebDeviceUseNumberHit",
+      "rule_name_cn": "新设备-WEB设备1小时聚集",
+      "status": "active",
+      "priority": 8,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "注册用户IP",
+                "operator": "not in",
+                "value": "IP白名单"
+              },
+              {
+                "var": "数美设备指纹",
+                "operator": "exist"
+              }
+            ]
+          },
+          {
+            "var": "新设备-同设备1h注册量",
+            "operator": ">=",
+            "value": 3
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中60分钟同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "minuteWebDeviceUseNumberHit",
+      "rule_name": "minuteWebDeviceUseNumberHit",
+      "rule_name_cn": "WEB设备1小时聚集",
+      "status": "inactive",
+      "priority": 9,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "var": "是否web端",
+                        "operator": "is true"
+                      },
+                      {
+                        "or": [
+                          {
+                            "and": [
+                              "特殊国家注册用户",
+                              {
+                                "var": "同设备1h注册量",
+                                "operator": ">",
+                                "value": 6
+                              }
+                            ]
+                          },
+                          {
+                            "and": [
+                              {
+                                "var": "同设备1h注册量",
+                                "operator": ">",
+                                "value": 4
+                              },
+                              {
+                                "var": "特殊国家注册用户",
+                                "operator": "is false"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "设备指纹web聚集豁免",
+                "operator": "!=",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中60分钟同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "hourWebDeviceUseNumberHit",
+      "rule_name": "hourWebDeviceUseNumberHit",
+      "rule_name_cn": "WEB设备24小时聚集",
+      "status": "inactive",
+      "priority": 10,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "var": "是否web端",
+                        "operator": "is true"
+                      },
+                      {
+                        "or": [
+                          {
+                            "and": [
+                              "特殊国家注册用户",
+                              {
+                                "var": "相同设备24h注册量",
+                                "operator": ">",
+                                "value": 8
+                              }
+                            ]
+                          },
+                          {
+                            "and": [
+                              {
+                                "var": "相同设备24h注册量",
+                                "operator": ">",
+                                "value": 6
+                              },
+                              {
+                                "var": "特殊国家注册用户",
+                                "operator": "is false"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "设备指纹web聚集豁免",
+                "operator": "!=",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中24小时同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayWebDeviceUseNumberOf7Hit",
+      "rule_name": "dayWebDeviceUseNumberOf7Hit",
+      "rule_name_cn": "WEB设备7天聚集",
+      "status": "inactive",
+      "priority": 11,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "var": "是否web端",
+                        "operator": "is true"
+                      },
+                      {
+                        "or": [
+                          {
+                            "and": [
+                              "特殊国家注册用户",
+                              {
+                                "var": "同设备7d注册量",
+                                "operator": ">",
+                                "value": 12
+                              }
+                            ]
+                          },
+                          {
+                            "and": [
+                              {
+                                "var": "同设备7d注册量",
+                                "operator": ">",
+                                "value": 10
+                              },
+                              {
+                                "var": "特殊国家注册用户",
+                                "operator": "is false"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "设备指纹web聚集豁免",
+                "operator": "!=",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中7天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayWebDeviceUseNumberOf30Hit",
+      "rule_name": "dayWebDeviceUseNumberOf30Hit",
+      "rule_name_cn": "WEB设备30天聚集",
+      "status": "inactive",
+      "priority": 12,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "var": "是否web端",
+                        "operator": "is true"
+                      },
+                      {
+                        "or": [
+                          {
+                            "and": [
+                              "特殊国家注册用户",
+                              {
+                                "var": "同设备30d注册量",
+                                "operator": ">",
+                                "value": 22
+                              }
+                            ]
+                          },
+                          {
+                            "and": [
+                              {
+                                "var": "同设备30d注册量",
+                                "operator": ">",
+                                "value": 20
+                              },
+                              {
+                                "var": "特殊国家注册用户",
+                                "operator": "is false"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "设备指纹web聚集豁免",
+                "operator": "!=",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中30天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "sameEquipmentMailboxSmall_WEB",
+      "rule_name": "sameEquipmentMailboxSmall_WEB",
+      "rule_name_cn": "同设备相同邮箱前缀注册次数超限_WEB",
+      "status": "inactive",
+      "priority": 13,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同设备同站点相同邮箱前缀注册次数 + 1",
+            "operator": ">",
+            "value": 3
+          },
+          {
+            "var": "注册用户IP",
+            "operator": "not in",
+            "value": "IP白名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中相同设备邮箱小号",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "fingerNotExistHitReject",
+      "rule_name": "fingerNotExistHitReject",
+      "rule_name_cn": "指纹不存在_拒绝策略",
+      "status": "active",
+      "priority": 14,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          },
+          {
+            "var": "ip国家码(解析)",
+            "operator": "in",
+            "value": [
+              "LT",
+              "LV",
+              "UA",
+              "PL",
+              "RO",
+              "MD",
+              "VN",
+              "KG"
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中指纹不存在",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R08"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "fingerNotExistHitWeb",
+      "rule_name": "fingerNotExistHitWeb",
+      "rule_name_cn": "指纹不存在",
+      "status": "active",
+      "priority": 15,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "设备指纹",
+            "operator": "not exist"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中指纹不存在",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": "true ( 设备指纹 not exist ) and ( 数美设备指纹 not exist ) and ( 注册类型 not in ['KUCOIN-INFO'] )"
+        },
+        {
+          "var": "命中指纹不存在",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R08"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "VN_temp_Email_Reject",
+      "rule_name": "VN_temp_Email_Reject",
+      "rule_name_cn": "VN临时邮箱拒绝规则",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取邮箱后缀",
+              "args": [
+                "注册邮箱"
+              ]
+            },
+            "operator": "in",
+            "value": [
+              "mail1s.xyz"
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "geo信息",
+                "isoCode"
+              ]
+            },
+            "operator": "=",
+            "value": "VN"
+          }
+        ]
+      },
+      "assignment_expression": [],
+      "action": "reject",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "UA_temp_Email_Reject",
+      "rule_name": "UA_temp_Email_Reject",
+      "rule_name_cn": "UA临时邮箱拒绝规则",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取邮箱后缀",
+              "args": [
+                "注册邮箱"
+              ]
+            },
+            "operator": "in",
+            "value": [
+              "exelica.com",
+              "getsingspiel.com",
+              "go-daddypromocode.com",
+              "futuramind.com",
+              "hackertales.com",
+              "diginey.com"
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "geo信息",
+                "isoCode"
+              ]
+            },
+            "operator": "=",
+            "value": "UA"
+          }
+        ]
+      },
+      "assignment_expression": [],
+      "action": "reject",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "Temp_Email_Reject",
+      "rule_name": "Temp_Email_Reject",
+      "rule_name_cn": "临时邮箱拒绝规则",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "var": {
+          "function": "获取邮箱后缀",
+          "args": [
+            "注册邮箱"
+          ]
+        },
+        "operator": "in",
+        "value": "临时禁止注册邮箱列表"
+      },
+      "assignment_expression": [],
+      "action": "reject",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "batch_email_register",
+      "rule_name": "batch_email_register",
+      "rule_name_cn": "批量相似邮箱注册规则",
+      "status": "inactive",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "or": [
+              {
+                "or": [
+                  {
+                    "or": [
+                      {
+                        "var": "相似邮箱在当前站点注册量 - 1小时",
+                        "operator": ">=",
+                        "value": 3
+                      },
+                      {
+                        "var": "相似邮箱在当前站点注册量 - 24小时",
+                        "operator": ">=",
+                        "value": 5
+                      }
+                    ]
+                  },
+                  {
+                    "var": "相似邮箱在当前站点注册量 - 7天",
+                    "operator": ">=",
+                    "value": 11
+                  }
+                ]
+              },
+              {
+                "var": "相似邮箱在当前站点注册量 - 30天",
+                "operator": ">=",
+                "value": 16
+              }
+            ]
+          },
+          {
+            "var": "注册邮箱前缀长度",
+            "operator": ">",
+            "value": 10
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R07"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "minuteEmailUseNumberHit",
+      "rule_name": "minuteEmailUseNumberHit",
+      "rule_name_cn": "本次邮箱在过去1小时内注册用户大于N个",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同邮箱前缀同站点注册量 - 1h",
+            "operator": ">",
+            "value": 4
+          },
+          {
+            "var": "注册邮箱前缀长度",
+            "operator": ">=",
+            "value": 8
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中60m同邮箱前缀注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "hourEmailUseNumberHit",
+      "rule_name": "hourEmailUseNumberHit",
+      "rule_name_cn": "本次邮箱在过去24小时内注册用户大于N个",
+      "status": "active",
+      "priority": 6,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同邮箱前缀同站点注册量 - 24h",
+            "operator": ">",
+            "value": 4
+          },
+          {
+            "var": "注册邮箱前缀长度",
+            "operator": ">=",
+            "value": 8
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中24h同邮箱前缀注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayEmailUseNumberOf7Hit",
+      "rule_name": "dayEmailUseNumberOf7Hit",
+      "rule_name_cn": "本次邮箱在过去7天内注册用户大于N个",
+      "status": "active",
+      "priority": 7,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同邮箱前缀同站点注册量 - 7天",
+            "operator": ">",
+            "value": 10
+          },
+          {
+            "var": "注册邮箱前缀长度",
+            "operator": ">=",
+            "value": 8
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中7d同邮箱前缀注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayEmailUseNumberOf30Hit",
+      "rule_name": "dayEmailUseNumberOf30Hit",
+      "rule_name_cn": "本次邮箱在过去30天内注册用户大于N个",
+      "status": "active",
+      "priority": 8,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同邮箱前缀同站点注册量 - 30天",
+            "operator": ">",
+            "value": 15
+          },
+          {
+            "var": "注册邮箱前缀长度",
+            "operator": ">=",
+            "value": 8
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中30d同邮箱前缀注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "rateLimit",
+      "rule_name": "rateLimit",
+      "rule_name_cn": "直接限频",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "or": [
+          {
+            "var": "请求时间",
+            "operator": "<",
+            "value": "设备限频结束时间点"
+          },
+          {
+            "var": "请求时间",
+            "operator": "<",
+            "value": "新设备-设备限频结束时间点"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "指纹限流特征加工依赖因子",
+          "operator": "set",
+          "value": 0
+        },
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": {
+            "function": "true",
+            "args": [
+              "请求时间 < ip限频结束时间点"
+            ]
+          }
+        },
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "ip限流特征加工依赖因子",
+          "operator": "set",
+          "value": 0
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "countLimitWebSm",
+      "rule_name": "countLimitWebSm",
+      "rule_name_cn": "注册次数限频_数美Web",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "是否web端",
+                "operator": "is true"
+              },
+              {
+                "var": "新设备-同设备1h注册量",
+                "operator": ">",
+                "value": 20
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": "true 触发设备限流 ( 请求时间 , 1小时(ms) , 数美设备指纹 )"
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "countLimitAppSm",
+      "rule_name": "countLimitAppSm",
+      "rule_name_cn": "注册次数限频_数美App",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "是否移动端",
+                "operator": "is true"
+              },
+              {
+                "var": "新设备-同设备1h注册量",
+                "operator": ">",
+                "value": 20
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": "true 触发设备限流 ( 请求时间 , 1小时(ms) , 数美设备指纹 )"
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "countLimitApp",
+      "rule_name": "countLimitApp",
+      "rule_name_cn": "注册次数限频_自研",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "是否移动端",
+                "operator": "is true"
+              },
+              {
+                "var": "设备近1h注册次数",
+                "operator": ">",
+                "value": 30
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": "true 触发设备限流 ( 请求时间 , 1小时(ms) , 设备指纹 )"
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "SM_APP_HighRiskScore",
+      "rule_name": "SM_APP_HighRiskScore",
+      "rule_name_cn": "数美APP高危设备判断",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          },
+          {
+            "var": "数美设备指纹策略命中结果",
+            "operator": "=",
+            "value": "HIGH"
+          }
+        ]
+      },
+      "assignment_expression": [],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "SM_30dAndroidDeviceUseNumberHit",
+      "rule_name": "SM_30dAndroidDeviceUseNumberHit",
+      "rule_name_cn": "新设备-安卓手机设备30天聚集",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "新设备-同设备30d注册量",
+                    "operator": ">",
+                    "value": 20
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "客户端平台",
+                "operator": "in",
+                "value": [
+                  "ANDROID_APP"
+                ]
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中30天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_7dAndroidDeviceUseNumberHit",
+      "rule_name": "SM_7dAndroidDeviceUseNumberHit",
+      "rule_name_cn": "新设备-安卓手机设备7天聚集",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "新设备-同设备7d注册量",
+                    "operator": ">",
+                    "value": 10
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "客户端平台",
+                "operator": "in",
+                "value": [
+                  "ANDROID_APP"
+                ]
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中7天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_24hAndroidDeviceUseNumberHit",
+      "rule_name": "SM_24hAndroidDeviceUseNumberHit",
+      "rule_name_cn": "新设备-安卓手机设备24小时聚集",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "新设备-相同设备24h注册量",
+                    "operator": ">",
+                    "value": 6
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "客户端平台",
+                "operator": "in",
+                "value": [
+                  "ANDROID_APP"
+                ]
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中24小时同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_1hAndroidDeviceUseNumberHit",
+      "rule_name": "SM_1hAndroidDeviceUseNumberHit",
+      "rule_name_cn": "新设备-安卓手机设备1小时聚集",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "新设备-同设备1h注册量",
+                    "operator": ">",
+                    "value": 4
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "客户端平台",
+                "operator": "in",
+                "value": [
+                  "ANDROID_APP"
+                ]
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中60分钟同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "minuteDeviceUseNumberHit",
+      "rule_name": "minuteDeviceUseNumberHit",
+      "rule_name_cn": "手机设备1小时聚集",
+      "status": "active",
+      "priority": 6,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "同设备1h注册量",
+                    "operator": ">",
+                    "value": 4
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "是否移动端",
+                "operator": "is true"
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中60分钟同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "hourDeviceUseNumberHit",
+      "rule_name": "hourDeviceUseNumberHit",
+      "rule_name_cn": "手机设备24小时聚集",
+      "status": "active",
+      "priority": 7,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "相同设备24h注册量",
+                    "operator": ">",
+                    "value": 6
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "是否移动端",
+                "operator": "is true"
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中24小时同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayDeviceUseNumberOf7Hit",
+      "rule_name": "dayDeviceUseNumberOf7Hit",
+      "rule_name_cn": "手机设备7天聚集",
+      "status": "active",
+      "priority": 8,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "同设备7d注册量",
+                    "operator": ">",
+                    "value": 10
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "是否移动端",
+                "operator": "is true"
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中7天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayDeviceUseNumberOf30Hit",
+      "rule_name": "dayDeviceUseNumberOf30Hit",
+      "rule_name_cn": "手机设备30天聚集",
+      "status": "active",
+      "priority": 9,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "同设备30d注册量",
+                    "operator": ">",
+                    "value": 20
+                  },
+                  {
+                    "var": "注册用户IP",
+                    "operator": "not in",
+                    "value": "IP白名单"
+                  }
+                ]
+              },
+              {
+                "var": "是否移动端",
+                "operator": "is true"
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中30天同设备注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R05"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_isVPNHit",
+      "rule_name": "SM_isVPNHit",
+      "rule_name_cn": "新设备是否VPN",
+      "status": "active",
+      "priority": 10,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "数美额外设备指纹信息",
+                "is_vpn"
+              ]
+            },
+            "operator": "is true"
+          },
+          {
+            "var": "数美额外设备指纹信息",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_isXposedExist",
+      "rule_name": "SM_isXposedExist",
+      "rule_name_cn": "新设备是否Xposed",
+      "status": "active",
+      "priority": 11,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "数美额外设备指纹信息",
+                "is_xposed"
+              ]
+            },
+            "operator": "is true"
+          },
+          {
+            "var": "数美额外设备指纹信息",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "isXposedExistHit",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_isRootHit",
+      "rule_name": "SM_isRootHit",
+      "rule_name_cn": "新设备是否ROOT",
+      "status": "active",
+      "priority": 12,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "数美额外设备指纹信息",
+                "is_root"
+              ]
+            },
+            "operator": "is true"
+          },
+          {
+            "var": "数美额外设备指纹信息",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "isRootHit",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_isMultiOpenHit",
+      "rule_name": "SM_isMultiOpenHit",
+      "rule_name_cn": "新设备是否多开",
+      "status": "active",
+      "priority": 13,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "数美设备指纹信息",
+            "operator": "exist"
+          },
+          {
+            "var": "数美设备指纹-多开",
+            "operator": "is true"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中客户端多开",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_isHookHit",
+      "rule_name": "SM_isHookHit",
+      "rule_name_cn": "新设备是否Hook",
+      "status": "active",
+      "priority": 14,
+      "hit_expression": {
+        "and": [
+          {
+            "function": "获取对象属性",
+            "args": [
+              {
+                "function": "获取对象属性",
+                "args": [
+                  "数美设备指纹信息",
+                  "device_suspicious_labels"
+                ]
+              },
+              "b_hook"
+            ]
+          },
+          {
+            "var": "数美设备指纹信息",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "isHookHit",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "SM_isEmulatorHit",
+      "rule_name": "SM_isEmulatorHit",
+      "rule_name_cn": "新设备是否模拟器",
+      "status": "active",
+      "priority": 15,
+      "hit_expression": {
+        "and": [
+          {
+            "function": "获取对象属性",
+            "args": [
+              {
+                "function": "获取对象属性",
+                "args": [
+                  "数美设备指纹信息",
+                  "fake_device"
+                ]
+              },
+              "b_phone_emulator"
+            ]
+          },
+          {
+            "var": "数美设备指纹信息",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中设备属于模拟器",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "isEmulatorHit",
+      "rule_name": "isEmulatorHit",
+      "rule_name_cn": "设备是否模拟器",
+      "status": "active",
+      "priority": 16,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "设备指纹信息",
+                "isEmulator"
+              ]
+            },
+            "operator": "is true"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中设备属于模拟器",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "isMultiOpenHit",
+      "rule_name": "isMultiOpenHit",
+      "rule_name_cn": "设备是否多开",
+      "status": "active",
+      "priority": 17,
+      "hit_expression": {
+        "or": [
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "设备指纹信息",
+                "isMultiOpen"
+              ]
+            },
+            "operator": "is true"
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "设备指纹信息",
+                "filesDir"
+              ]
+            },
+            "operator": "in",
+            "value": "APP设备filesDir黑名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中客户端多开",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "isXposedExist",
+      "rule_name": "isXposedExist",
+      "rule_name_cn": "设备是否Xposed",
+      "status": "active",
+      "priority": 18,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "设备指纹客户端是否安卓端",
+                    "operator": "is true"
+                  },
+                  {
+                    "var": "ip国家码(解析)",
+                    "operator": "in",
+                    "value": [
+                      "IN",
+                      "BD"
+                    ]
+                  }
+                ]
+              },
+              {
+                "var": "数美设备指纹",
+                "operator": "not exist"
+              }
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "设备指纹信息",
+                "isXposedExist"
+              ]
+            },
+            "operator": "is true"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "isXposedExistHit",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "isRootHit",
+      "rule_name": "isRootHit",
+      "rule_name_cn": "设备是否Root",
+      "status": "active",
+      "priority": 19,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "设备指纹信息",
+                "isRoot"
+              ]
+            },
+            "operator": "is true"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "isRootHit",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "isHookHit",
+      "rule_name": "isHookHit",
+      "rule_name_cn": "设备是否hook",
+      "status": "active",
+      "priority": 20,
+      "hit_expression": {
+        "and": [
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "设备指纹信息",
+                "isHook"
+              ]
+            },
+            "operator": "is true"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "isHookHit",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R02"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "deviceHighRiskHit",
+      "rule_name": "deviceHighRiskHit",
+      "rule_name_cn": "设备高风险规则",
+      "status": "active",
+      "priority": 21,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "ip国家码(解析)",
+                "operator": "in",
+                "value": [
+                  "IN",
+                  "VN",
+                  "BD"
+                ]
+              },
+              {
+                "or": [
+                  {
+                    "var": {
+                      "function": "解密函数",
+                      "args": [
+                        "邮箱域名(aes密文)"
+                      ]
+                    },
+                    "operator": "not in",
+                    "value": "常量-常用域名"
+                  },
+                  {
+                    "var": "邮箱域名(aes密文)",
+                    "operator": "not exist"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "or": [
+              {
+                "or": [
+                  {
+                    "or": [
+                      {
+                        "var": "isRootHit",
+                        "operator": "is true"
+                      },
+                      {
+                        "var": "isHookHit",
+                        "operator": "is true"
+                      }
+                    ]
+                  },
+                  {
+                    "var": "isXposedExistHit",
+                    "operator": "is true"
+                  }
+                ]
+              },
+              {
+                "var": "命中客户端多开",
+                "operator": "is true"
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中设备高风险规则",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "multiOpenHighRiskHit",
+      "rule_name": "multiOpenHighRiskHit",
+      "rule_name_cn": "多开高风险规则",
+      "status": "inactive",
+      "priority": 22,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "命中客户端多开",
+                "operator": "is true"
+              },
+              {
+                "var": "客户端平台",
+                "operator": "=",
+                "value": "ANDROID_APP"
+              }
+            ]
+          },
+          {
+            "or": [
+              {
+                "or": [
+                  {
+                    "var": "ip国家码(解析)",
+                    "operator": "in",
+                    "value": [
+                      "IN",
+                      "BD",
+                      "NG",
+                      "ID",
+                      "VN"
+                    ]
+                  },
+                  {
+                    "var": {
+                      "function": "解密函数",
+                      "args": [
+                        "邮箱域名(aes密文)"
+                      ]
+                    },
+                    "operator": "not in",
+                    "value": "常量-常用域名"
+                  }
+                ]
+              },
+              {
+                "var": "用户有邮箱标识",
+                "operator": "=",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "是否命中多开高风险规则",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "fingerNotExistHitApp",
+      "rule_name": "fingerNotExistHitApp",
+      "rule_name_cn": "指纹不存在",
+      "status": "active",
+      "priority": 23,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "设备指纹",
+            "operator": "not exist"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中指纹不存在",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": "true ( 设备指纹 not exist ) and ( 数美设备指纹 not exist ) and ( 注册类型 not in ['KUCOIN-INFO'] )"
+        },
+        {
+          "var": "命中指纹不存在",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R08"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "Ip_KYC_country_conflict_24h",
+      "rule_name": "Ip_KYC_country_conflict_24h",
+      "rule_name_cn": "此IP申请过去24小时KYC冲突情况",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "IP国家近1天完成KYC3注册数",
+                "operator": ">",
+                "value": 10
+              },
+              {
+                "var": "IP国家近1天KYC不一致注册数 / IP国家近1天完成KYC3注册数",
+                "operator": ">=",
+                "value": 0.5
+              }
+            ]
+          },
+          {
+            "var": "同IP24h注册量",
+            "operator": ">",
+            "value": 4
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时同ip注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "IPReg_Abnormal_Increase",
+      "rule_name": "IPReg_Abnormal_Increase",
+      "rule_name_cn": "IP申请个数突变",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "or": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "同IP1h注册量",
+                    "operator": ">",
+                    "value": 4
+                  },
+                  {
+                    "var": "同IP30d注册量",
+                    "operator": ">",
+                    "value": 5
+                  }
+                ]
+              },
+              {
+                "var": "同IP1h注册量",
+                "operator": ">=",
+                "value": "同IP30d注册量 / 5"
+              }
+            ]
+          },
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "同IP1h注册量",
+                    "operator": ">",
+                    "value": 4
+                  },
+                  {
+                    "var": "同IP7d注册量",
+                    "operator": ">",
+                    "value": 4
+                  }
+                ]
+              },
+              {
+                "var": "同IP1h注册量",
+                "operator": ">=",
+                "value": "同IP7d注册量 / 1"
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "IP_Absolute_HighFreq_Rule",
+      "rule_name": "IP_Absolute_HighFreq_Rule",
+      "rule_name_cn": "IP绝对值高频限制策略",
+      "status": "inactive",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "or": [
+                  {
+                    "or": [
+                      {
+                        "var": "同IP1h注册量",
+                        "operator": ">=",
+                        "value": 10
+                      },
+                      {
+                        "var": "同IP24h注册量",
+                        "operator": ">=",
+                        "value": 20
+                      }
+                    ]
+                  },
+                  {
+                    "var": "同IP7d注册量",
+                    "operator": ">=",
+                    "value": 29
+                  }
+                ]
+              },
+              {
+                "var": "同IP30d注册量",
+                "operator": ">=",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "var": "注册用户IP",
+            "operator": "not in",
+            "value": "IP白名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "minuteIpUseNumberHit",
+      "rule_name": "minuteIpUseNumberHit",
+      "rule_name_cn": "本次ip在过去1小时内注册用户大于N个",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同IP1h注册量",
+            "operator": ">=",
+            "value": 8
+          },
+          {
+            "var": "注册用户IP",
+            "operator": "not in",
+            "value": "IP白名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中60分钟同ip注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "hourIpUseNumberHit",
+      "rule_name": "hourIpUseNumberHit",
+      "rule_name_cn": "本次ip在过去24小时内注册用户大于N个",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同IP24h注册量",
+            "operator": ">=",
+            "value": 15
+          },
+          {
+            "var": "注册用户IP",
+            "operator": "not in",
+            "value": "IP白名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中24小时同ip注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayIpUseNumberOf7Hit",
+      "rule_name": "dayIpUseNumberOf7Hit",
+      "rule_name_cn": "本次ip在过去7天内注册用户大于N个",
+      "status": "active",
+      "priority": 6,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同IP7d注册量",
+            "operator": ">=",
+            "value": 30
+          },
+          {
+            "var": "注册用户IP",
+            "operator": "not in",
+            "value": "IP白名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中7天同ip注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayIpUseNumberOf30Hit",
+      "rule_name": "dayIpUseNumberOf30Hit",
+      "rule_name_cn": "本次ip在过去30天内注册用户大于N个",
+      "status": "active",
+      "priority": 7,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同IP30d注册量",
+            "operator": ">=",
+            "value": 50
+          },
+          {
+            "var": "注册用户IP",
+            "operator": "not in",
+            "value": "IP白名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中30天同ip注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "sameIPMailboxSmall",
+      "rule_name": "sameIPMailboxSmall",
+      "rule_name_cn": "同ip相同邮箱前缀注册次数超限",
+      "status": "active",
+      "priority": 8,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同ip同站点相同邮箱前缀注册次数 + 1",
+            "operator": ">",
+            "value": 3
+          },
+          {
+            "var": "注册用户IP",
+            "operator": "not in",
+            "value": "IP白名单"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中相同IP邮箱小号",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "pwdCountLimit",
+      "rule_name": "pwdCountLimit",
+      "rule_name_cn": "重复密码限制",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "or": [
+              {
+                "var": "同密码1h注册量",
+                "operator": ">",
+                "value": 20
+              },
+              {
+                "var": "同密码24h注册量",
+                "operator": ">",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "geo信息",
+                "isoCode"
+              ]
+            },
+            "operator": "in",
+            "value": [
+              "NG",
+              "KE"
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "添加同密码注册黑名单",
+          "operator": "set",
+          "value": {
+            "function": "new_创建黑名单",
+            "args": [
+              "W1991326710813417472",
+              "用户id",
+              90
+            ]
+          }
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "SameDeviceSameEmailPrefix",
+      "rule_name": "SameDeviceSameEmailPrefix",
+      "rule_name_cn": "同设备相同邮箱前缀注册次数超限",
+      "status": "inactive",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "同设备同站点相同邮箱前缀注册次数 + 1",
+                "operator": ">",
+                "value": 3
+              },
+              {
+                "var": "注册用户IP",
+                "operator": "not in",
+                "value": "IP白名单"
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中相同设备邮箱小号",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "SM_SameDeviceSameEmailPrefix",
+      "rule_name": "SM_SameDeviceSameEmailPrefix",
+      "rule_name_cn": "新设备同设备相同邮箱前缀注册次数超限",
+      "status": "inactive",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "新设备-同设备同站点相同邮箱前缀注册次数 + 1",
+                "operator": ">",
+                "value": 3
+              },
+              {
+                "var": "注册用户IP",
+                "operator": "not in",
+                "value": "IP白名单"
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中相同设备邮箱小号",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountrySameMinorityEmailSuffix2",
+      "rule_name": "ipCountrySameMinorityEmailSuffix2",
+      "rule_name_cn": "IP国家和小众邮箱注册次数超限2",
+      "status": "inactive",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "注册邮箱后缀",
+                "operator": "not in",
+                "value": "常用邮箱域名TOP500"
+              },
+              {
+                "or": [
+                  {
+                    "or": [
+                      {
+                        "var": "IP国家和邮箱后缀近1小时注册数",
+                        "operator": ">",
+                        "value": 3
+                      },
+                      {
+                        "var": "IP国家和邮箱后缀近24小时注册数",
+                        "operator": ">",
+                        "value": 6
+                      }
+                    ]
+                  },
+                  {
+                    "var": "IP国家和邮箱后缀近7天注册数",
+                    "operator": ">",
+                    "value": 10
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "数美额外设备指纹信息",
+                "secchuaplatform"
+              ]
+            },
+            "operator": "=",
+            "value": "\"Windows\""
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家小众邮箱策略",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R07"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountrySameMinorityEmailSuffix",
+      "rule_name": "ipCountrySameMinorityEmailSuffix",
+      "rule_name_cn": "IP国家和小众邮箱注册次数超限",
+      "status": "inactive",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "注册邮箱后缀",
+                "operator": "not in",
+                "value": "常见邮箱后缀列表"
+              },
+              {
+                "or": [
+                  {
+                    "or": [
+                      {
+                        "var": "IP国家和邮箱后缀近1小时注册数",
+                        "operator": ">",
+                        "value": 8
+                      },
+                      {
+                        "var": "IP国家和邮箱后缀近24小时注册数",
+                        "operator": ">",
+                        "value": 15
+                      }
+                    ]
+                  },
+                  {
+                    "var": "IP国家和邮箱后缀近7天注册数",
+                    "operator": ">",
+                    "value": 25
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "var": "ip国家码(解析)",
+            "operator": "in",
+            "value": "作弊高风险国家"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家小众邮箱策略",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R07"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountryDeviceEmpty1H",
+      "rule_name": "ipCountryDeviceEmpty1H",
+      "rule_name_cn": "近1小时IP国家和设备指纹为空",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "IP国家近1小时设备指纹为空注册数",
+                "operator": ">=",
+                "value": 2
+              },
+              {
+                "var": "IP国家近1小时设备指纹为空注册数 / IP国家近1小时注册数",
+                "operator": ">=",
+                "value": 0.2
+              }
+            ]
+          },
+          {
+            "var": "同IP1h注册量",
+            "operator": ">=",
+            "value": 3
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家近1小时设备指纹为空",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountryDeviceAbnormal1H",
+      "rule_name": "ipCountryDeviceAbnormal1H",
+      "rule_name_cn": "近1小时IP国家和设备指纹异常",
+      "status": "active",
+      "priority": 6,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "IP国家近1小时设备指纹异常注册数",
+                "operator": ">=",
+                "value": 2
+              },
+              {
+                "var": "IP国家近1小时设备指纹异常注册数 / IP国家近1小时注册数",
+                "operator": ">=",
+                "value": 0.2
+              }
+            ]
+          },
+          {
+            "var": "同IP1h注册量",
+            "operator": ">=",
+            "value": 3
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家近1小时设备指纹异常",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountryDeviceEmpty24H",
+      "rule_name": "ipCountryDeviceEmpty24H",
+      "rule_name_cn": "近24小时IP国家和设备指纹为空",
+      "status": "active",
+      "priority": 7,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "IP国家近24小时设备指纹为空注册数",
+                "operator": ">=",
+                "value": 3
+              },
+              {
+                "var": "IP国家近24小时设备指纹为空注册数 / IP国家近24小时注册数",
+                "operator": ">=",
+                "value": 0.2
+              }
+            ]
+          },
+          {
+            "var": "同IP24h注册量",
+            "operator": ">=",
+            "value": 5
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家近24小时设备指纹为空",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountryDeviceAbnormal24H",
+      "rule_name": "ipCountryDeviceAbnormal24H",
+      "rule_name_cn": "近24小时IP国家和设备指纹异常",
+      "status": "active",
+      "priority": 8,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "IP国家近24小时设备指纹异常注册数",
+                "operator": ">=",
+                "value": 3
+              },
+              {
+                "var": "IP国家近24小时设备指纹异常注册数 / IP国家近24小时注册数",
+                "operator": ">=",
+                "value": 0.2
+              }
+            ]
+          },
+          {
+            "var": "同IP24h注册量",
+            "operator": ">=",
+            "value": 5
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家近24小时设备指纹异常",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountryDeviceEmpty7D",
+      "rule_name": "ipCountryDeviceEmpty7D",
+      "rule_name_cn": "近7天IP国家和设备指纹为空",
+      "status": "active",
+      "priority": 9,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "IP国家近7天设备指纹为空注册数",
+                "operator": ">=",
+                "value": 5
+              },
+              {
+                "var": "IP国家近7天设备指纹为空注册数 / IP国家近7天注册数",
+                "operator": ">=",
+                "value": 0.2
+              }
+            ]
+          },
+          {
+            "var": "同IP7d注册量",
+            "operator": ">=",
+            "value": 8
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家近7天设备指纹为空",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountryDeviceAbnormal7D",
+      "rule_name": "ipCountryDeviceAbnormal7D",
+      "rule_name_cn": "近7天IP国家和设备指纹异常",
+      "status": "active",
+      "priority": 10,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "IP国家近7天设备指纹异常注册数",
+                "operator": ">=",
+                "value": 5
+              },
+              {
+                "var": "IP国家近7天设备指纹异常注册数 / IP国家近7天注册数",
+                "operator": ">=",
+                "value": 0.2
+              }
+            ]
+          },
+          {
+            "var": "同IP7d注册量",
+            "operator": ">=",
+            "value": 8
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中IP国家近7天设备指纹异常",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "minorityEmailSamePwd",
+      "rule_name": "minorityEmailSamePwd",
+      "rule_name_cn": "使用小众邮箱且同密码",
+      "status": "active",
+      "priority": 11,
+      "hit_expression": {
+        "or": [
+          {
+            "or": [
+              {
+                "var": "同密码且使用小众邮箱近1小时注册数",
+                "operator": ">=",
+                "value": 2
+              },
+              {
+                "var": "同密码且使用小众邮箱近24小时注册数",
+                "operator": ">=",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "var": "同密码且使用小众邮箱近7天注册数",
+            "operator": ">=",
+            "value": 6
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中小众邮箱同密码",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R06"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "bulkRegDetectModel",
+      "rule_name": "bulkRegDetectModel",
+      "rule_name_cn": "批量注册识别模型",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "var": "批量注册识别模型分数",
+        "operator": ">",
+        "value": 95
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R01"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "bulkRegDetectModelHighRiskCountry",
+      "rule_name": "bulkRegDetectModelHighRiskCountry",
+      "rule_name_cn": "批量注册识别模型_高风险国家",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "批量注册识别模型分数",
+            "operator": ">",
+            "value": 93
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "geo信息",
+                "isoCode"
+              ]
+            },
+            "operator": "in",
+            "value": "常量-羊毛国家码"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R01"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "bulkRegDetectModelHighRiskCountryPCWeb",
+      "rule_name": "bulkRegDetectModelHighRiskCountryPCWeb",
+      "rule_name_cn": "批量注册识别模型_高风险国家_PCWeb",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "批量注册识别模型分数",
+                "operator": ">",
+                "value": 80
+              },
+              {
+                "var": {
+                  "function": "获取对象属性",
+                  "args": [
+                    "geo信息",
+                    "isoCode"
+                  ]
+                },
+                "operator": "in",
+                "value": "常量-羊毛国家码"
+              }
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "数美额外设备指纹信息",
+                "secchuaplatform"
+              ]
+            },
+            "operator": "=",
+            "value": "\"Windows\""
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R01"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "lowValueDeviceGpsChange",
+      "rule_name": "lowValueDeviceGpsChange",
+      "rule_name_cn": "GPS突变+低设备价值",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "gps24h注册量_保留2",
+                    "operator": ">=",
+                    "value": "近14天GPS注册量中位数 * 4"
+                  },
+                  {
+                    "var": {
+                      "function": "获取对象属性",
+                      "args": [
+                        "geo信息",
+                        "isoCode"
+                      ]
+                    },
+                    "operator": "in",
+                    "value": "常量-羊毛国家码"
+                  }
+                ]
+              },
+              {
+                "var": "gps24h注册量_保留2",
+                "operator": ">=",
+                "value": 20
+              }
+            ]
+          },
+          {
+            "var": "设备价值模型分数",
+            "operator": "<",
+            "value": 50
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "sameEmailPrefixRule",
+      "rule_name": "sameEmailPrefixRule",
+      "rule_name_cn": "用户和邀请人使用相同邮箱",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "var": {
+          "function": "按规则提取邮箱前缀密文",
+          "args": [
+            "注册邮箱"
+          ]
+        },
+        "operator": "=",
+        "value": {
+          "function": "按规则提取邮箱前缀密文",
+          "args": [
+            "邀请人邮箱"
+          ]
+        }
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中与邀请人同邮箱前缀",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R03"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "sameIp",
+      "rule_name": "sameIp",
+      "rule_name_cn": "用户和邀请人使用同一IP",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "注册用户IP",
+            "operator": "=",
+            "value": "邀请人ip"
+          },
+          {
+            "or": [
+              {
+                "or": [
+                  {
+                    "or": [
+                      {
+                        "function": "校验黑白名单是否命中",
+                        "args": [
+                          20091,
+                          {
+                            "function": "解密函数",
+                            "args": [
+                              "邮箱域名(aes密文)"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "function": "校验黑白名单是否命中",
+                        "args": [
+                          20095,
+                          "注册用户IP"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "function": "校验黑白名单是否命中",
+                    "args": [
+                      20088,
+                      "设备指纹"
+                    ]
+                  }
+                ]
+              },
+              {
+                "var": "ip国家码(解析)",
+                "operator": "in",
+                "value": [
+                  "BD",
+                  "IN"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中与邀请人同ip",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R03"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "samePwd",
+      "rule_name": "samePwd",
+      "rule_name_cn": "用户和邀请人使用同一登录密码",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "var": "当前注册用户密码",
+        "operator": "=",
+        "value": "邀请人密码"
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中与邀请人同密码",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R03"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "sameDevice_SMDevice",
+      "rule_name": "sameDevice_SMDevice",
+      "rule_name_cn": "用户和邀请人使用同一设备指纹_数美",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "数美设备指纹",
+                "operator": "=",
+                "value": "新设备-邀请人设备指纹"
+              },
+              {
+                "var": "客户端平台",
+                "operator": "in",
+                "value": [
+                  "KUCOIN_WEB",
+                  "ANDROID_APP"
+                ]
+              }
+            ]
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中与邀请人同设备",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R03"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "sameDevice",
+      "rule_name": "sameDevice",
+      "rule_name_cn": "用户和邀请人使用同一设备指纹",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "设备指纹",
+            "operator": "=",
+            "value": "邀请人设备指纹"
+          },
+          {
+            "var": "数美设备指纹",
+            "operator": "not exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中与邀请人同设备",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R03"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "emailRepeatRegister",
+      "rule_name": "emailRepeatRegister",
+      "rule_name_cn": "邮箱重复注册规则",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "var": {
+          "function": "集合/字典/字符大小",
+          "args": [
+            "邮箱关联注销用户列表"
+          ]
+        },
+        "operator": ">",
+        "value": 5
+      },
+      "assignment_expression": [],
+      "action": "reject",
+      "reason_codes": [
+        "R07"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "phoneRepeatRegister",
+      "rule_name": "phoneRepeatRegister",
+      "rule_name_cn": "手机号重复注册规则",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "var": {
+          "function": "集合/字典/字符大小",
+          "args": [
+            "手机号关联注销用户列表"
+          ]
+        },
+        "operator": ">",
+        "value": 5
+      },
+      "assignment_expression": [],
+      "action": "reject",
+      "reason_codes": [
+        "R09"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "GPS_Concentrate_1H",
+      "rule_name": "GPS_Concentrate_1H",
+      "rule_name_cn": "GPS聚集规则1H",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": {
+                  "function": "获取对象属性",
+                  "args": [
+                    "geo信息",
+                    "isoCode"
+                  ]
+                },
+                "operator": "in",
+                "value": "常量-羊毛国家码"
+              },
+              {
+                "var": {
+                  "function": "获取邮箱后缀",
+                  "args": [
+                    "注册邮箱"
+                  ]
+                },
+                "operator": "not in",
+                "value": "常量-常用域名"
+              }
+            ]
+          },
+          {
+            "var": "gps1h注册量_保留2",
+            "operator": ">",
+            "value": 30
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中60分钟gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "GPS_Concentrate_24H",
+      "rule_name": "GPS_Concentrate_24H",
+      "rule_name_cn": "GPS聚集规则24H",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": {
+                  "function": "获取对象属性",
+                  "args": [
+                    "geo信息",
+                    "isoCode"
+                  ]
+                },
+                "operator": "in",
+                "value": "常量-羊毛国家码"
+              },
+              {
+                "var": {
+                  "function": "获取邮箱后缀",
+                  "args": [
+                    "注册邮箱"
+                  ]
+                },
+                "operator": "not in",
+                "value": "常量-常用域名"
+              }
+            ]
+          },
+          {
+            "var": "gps24h注册量_保留2",
+            "operator": ">",
+            "value": 100
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "GPS_Concentrate_7d",
+      "rule_name": "GPS_Concentrate_7d",
+      "rule_name_cn": "GPS聚集规则7d",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": {
+                  "function": "获取对象属性",
+                  "args": [
+                    "geo信息",
+                    "isoCode"
+                  ]
+                },
+                "operator": "in",
+                "value": "常量-羊毛国家码"
+              },
+              {
+                "var": {
+                  "function": "获取邮箱后缀",
+                  "args": [
+                    "注册邮箱"
+                  ]
+                },
+                "operator": "not in",
+                "value": "常量-常用域名"
+              }
+            ]
+          },
+          {
+            "var": "gps7d注册量_保留2",
+            "operator": ">",
+            "value": 500
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中7天gps注册测试超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "GPS_Concentrate_NewDevice",
+      "rule_name": "GPS_Concentrate_NewDevice",
+      "rule_name_cn": "GPS聚集规则_新设备",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": {
+                      "function": "获取对象属性",
+                      "args": [
+                        "geo信息",
+                        "isoCode"
+                      ]
+                    },
+                    "operator": "in",
+                    "value": "常量-羊毛国家码"
+                  },
+                  {
+                    "var": {
+                      "function": "获取邮箱后缀",
+                      "args": [
+                        "注册邮箱"
+                      ]
+                    },
+                    "operator": "not in",
+                    "value": "常量-常用域名"
+                  }
+                ]
+              },
+              {
+                "or": [
+                  {
+                    "or": [
+                      {
+                        "var": "新设备-gps1h注册量_保留1",
+                        "operator": ">",
+                        "value": 30
+                      },
+                      {
+                        "var": "新设备-gps24h注册量_保留1",
+                        "operator": ">",
+                        "value": 60
+                      }
+                    ]
+                  },
+                  {
+                    "var": "新设备-gps7d注册量_保留1",
+                    "operator": ">",
+                    "value": 500
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "var": "客户端平台",
+            "operator": "in",
+            "value": [
+              "ANDROID_APP",
+              "KUCOIN_WEB"
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "GPS_Sudden_Change_1H",
+      "rule_name": "GPS_Sudden_Change_1H",
+      "rule_name_cn": "GPS突变规则1H",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "gps1h注册量_保留2",
+                    "operator": ">=",
+                    "value": "近14天GPS注册量中位数 * 1"
+                  },
+                  {
+                    "var": {
+                      "function": "获取对象属性",
+                      "args": [
+                        "geo信息",
+                        "isoCode"
+                      ]
+                    },
+                    "operator": "in",
+                    "value": "常量-羊毛国家码"
+                  }
+                ]
+              },
+              {
+                "or": [
+                  {
+                    "var": "注册邮箱后缀",
+                    "operator": "not in",
+                    "value": "常量-常用域名"
+                  },
+                  {
+                    "var": "数美设备指纹策略命中结果",
+                    "operator": "in",
+                    "value": [
+                      "LOW",
+                      "MEDIUM",
+                      "HIGH"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "var": "gps1h注册量_保留2",
+            "operator": ">=",
+            "value": 5
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中60分钟gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "GPS_Sudden_Change_24H",
+      "rule_name": "GPS_Sudden_Change_24H",
+      "rule_name_cn": "GPS突变规则24H",
+      "status": "active",
+      "priority": 6,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "gps24h注册量_保留2",
+                    "operator": ">=",
+                    "value": "近14天GPS注册量中位数 * 4"
+                  },
+                  {
+                    "var": {
+                      "function": "获取对象属性",
+                      "args": [
+                        "geo信息",
+                        "isoCode"
+                      ]
+                    },
+                    "operator": "in",
+                    "value": "常量-羊毛国家码"
+                  }
+                ]
+              },
+              {
+                "or": [
+                  {
+                    "var": "注册邮箱后缀",
+                    "operator": "not in",
+                    "value": "常量-常用域名"
+                  },
+                  {
+                    "var": "数美设备指纹策略命中结果",
+                    "operator": "in",
+                    "value": [
+                      "LOW",
+                      "MEDIUM",
+                      "HIGH"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "var": "gps24h注册量_保留2",
+            "operator": ">=",
+            "value": 20
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "GPS_High_Sudden_Change_24H",
+      "rule_name": "GPS_High_Sudden_Change_24H",
+      "rule_name_cn": "GPS高突变规则24H",
+      "status": "active",
+      "priority": 7,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "var": "gps24h注册量_保留2",
+                "operator": ">=",
+                "value": "近14天GPS注册量中位数 * 8"
+              },
+              {
+                "var": {
+                  "function": "获取对象属性",
+                  "args": [
+                    "geo信息",
+                    "isoCode"
+                  ]
+                },
+                "operator": "in",
+                "value": "常量-羊毛国家码"
+              }
+            ]
+          },
+          {
+            "var": "gps24h注册量_保留2",
+            "operator": ">=",
+            "value": 40
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "Web_GPS_Sudden_Change_1H_Normal_Country",
+      "rule_name": "Web_GPS_Sudden_Change_1H_Normal_Country",
+      "rule_name_cn": "Web端GPS突变规则1H_常规国家",
+      "status": "active",
+      "priority": 8,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "gps1h注册量_保留2",
+                    "operator": ">=",
+                    "value": "近14天GPS注册量中位数 * 2"
+                  },
+                  {
+                    "var": "gps1h注册量_保留2",
+                    "operator": ">=",
+                    "value": 5
+                  }
+                ]
+              },
+              {
+                "var": "客户端平台",
+                "operator": "=",
+                "value": "KUCOIN_WEB"
+              }
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "数美额外设备指纹信息",
+                "secchuaplatform"
+              ]
+            },
+            "operator": "=",
+            "value": "\"Windows\""
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "Web_GPS_Sudden_Change_1H",
+      "rule_name": "Web_GPS_Sudden_Change_1H",
+      "rule_name_cn": "Web端GPS突变规则1H",
+      "status": "active",
+      "priority": 9,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "var": "gps1h注册量_保留2",
+                        "operator": ">=",
+                        "value": "近14天GPS注册量中位数 * 1"
+                      },
+                      {
+                        "var": "gps1h注册量_保留2",
+                        "operator": ">=",
+                        "value": 5
+                      }
+                    ]
+                  },
+                  {
+                    "var": "客户端平台",
+                    "operator": "=",
+                    "value": "KUCOIN_WEB"
+                  }
+                ]
+              },
+              {
+                "var": {
+                  "function": "获取对象属性",
+                  "args": [
+                    "数美额外设备指纹信息",
+                    "secchuaplatform"
+                  ]
+                },
+                "operator": "=",
+                "value": "\"Windows\""
+              }
+            ]
+          },
+          {
+            "var": "ip国家码(解析)",
+            "operator": "in",
+            "value": [
+              "UA",
+              "PK",
+              "BD",
+              "VN",
+              "IN"
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "Web_GPS_Sudden_Change_24H_Normal_Country",
+      "rule_name": "Web_GPS_Sudden_Change_24H_Normal_Country",
+      "rule_name_cn": "Web端GPS突变规则24H_常规国家",
+      "status": "active",
+      "priority": 10,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "gps24h注册量_保留2",
+                    "operator": ">=",
+                    "value": "近14天GPS注册量中位数 * 10"
+                  },
+                  {
+                    "var": "gps24h注册量_保留2",
+                    "operator": ">=",
+                    "value": 10
+                  }
+                ]
+              },
+              {
+                "var": "客户端平台",
+                "operator": "=",
+                "value": "KUCOIN_WEB"
+              }
+            ]
+          },
+          {
+            "var": {
+              "function": "获取对象属性",
+              "args": [
+                "数美额外设备指纹信息",
+                "secchuaplatform"
+              ]
+            },
+            "operator": "=",
+            "value": "\"Windows\""
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "Web_GPS_Sudden_Change_24H",
+      "rule_name": "Web_GPS_Sudden_Change_24H",
+      "rule_name_cn": "Web端GPS突变规则24H",
+      "status": "active",
+      "priority": 11,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "var": "gps24h注册量_保留2",
+                        "operator": ">=",
+                        "value": "近14天GPS注册量中位数 * 5"
+                      },
+                      {
+                        "var": "gps24h注册量_保留2",
+                        "operator": ">=",
+                        "value": 10
+                      }
+                    ]
+                  },
+                  {
+                    "var": "客户端平台",
+                    "operator": "=",
+                    "value": "KUCOIN_WEB"
+                  }
+                ]
+              },
+              {
+                "var": {
+                  "function": "获取对象属性",
+                  "args": [
+                    "数美额外设备指纹信息",
+                    "secchuaplatform"
+                  ]
+                },
+                "operator": "=",
+                "value": "\"Windows\""
+              }
+            ]
+          },
+          {
+            "var": "ip国家码(解析)",
+            "operator": "in",
+            "value": [
+              "UA",
+              "PK",
+              "BD",
+              "VN",
+              "IN"
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "gps3h_device_sim_rule",
+      "rule_name": "gps3h_device_sim_rule",
+      "rule_name_cn": "GPS聚集3H+设备相似规则",
+      "status": "active",
+      "priority": 12,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "or": [
+                  {
+                    "var": "近24小时同GPS同设备模糊ID注册用户数",
+                    "operator": ">=",
+                    "value": 5
+                  },
+                  {
+                    "var": "近3小时同GPS同设备模糊ID注册用户数",
+                    "operator": ">=",
+                    "value": 3
+                  }
+                ]
+              },
+              {
+                "var": "近3小时同GPS注册用户数 / 近14天同GPS注册量中位数",
+                "operator": ">=",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "var": "近3小时同GPS注册用户数",
+            "operator": ">=",
+            "value": 5
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中60分钟gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "gps24h_device_sim_rule",
+      "rule_name": "gps24h_device_sim_rule",
+      "rule_name_cn": "GPS聚集24H+设备相似规则",
+      "status": "active",
+      "priority": 13,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "or": [
+                  {
+                    "var": "近24小时同GPS同设备模糊ID注册用户数",
+                    "operator": ">=",
+                    "value": 5
+                  },
+                  {
+                    "var": "近3小时同GPS同设备模糊ID注册用户数",
+                    "operator": ">=",
+                    "value": 3
+                  }
+                ]
+              },
+              {
+                "var": "近24小时同GPS注册用户数 / 近14天同GPS注册量中位数",
+                "operator": ">=",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "var": "近24小时同GPS注册用户数",
+            "operator": ">=",
+            "value": 20
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中24小时gps注册次数超限",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R10"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "pwdBlackList",
+      "rule_name": "pwdBlackList",
+      "rule_name_cn": "密码直接入黑",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "var": "当前注册用户密码",
+        "operator": "in",
+        "value": [
+          "3716253622b4ee59fb01539ab2fbde7e"
+        ]
+      },
+      "assignment_expression": [],
+      "action": "review",
+      "reason_codes": [
+        "R11"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "minutePwdUseNumberHit",
+      "rule_name": "minutePwdUseNumberHit",
+      "rule_name_cn": "本次注册密码在过去1小时内注册用户大于N个",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同密码1h注册量",
+            "operator": ">",
+            "value": 4
+          },
+          {
+            "or": [
+              {
+                "var": "客户端平台",
+                "operator": "not in",
+                "value": [
+                  "IPHONE_APP"
+                ]
+              },
+              {
+                "var": "当前注册用户密码",
+                "operator": "not in",
+                "value": [
+                  "5dc9cc08bc6fab736738c8560fd1d4cb"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中60分钟同密码注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R06"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "hourPwdUseNumberHit",
+      "rule_name": "hourPwdUseNumberHit",
+      "rule_name_cn": "本次注册密码在过去24小时内注册用户大于N个",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同密码24h注册量",
+            "operator": ">",
+            "value": 6
+          },
+          {
+            "or": [
+              {
+                "var": "客户端平台",
+                "operator": "not in",
+                "value": [
+                  "IPHONE_APP"
+                ]
+              },
+              {
+                "var": "当前注册用户密码",
+                "operator": "not in",
+                "value": [
+                  "5dc9cc08bc6fab736738c8560fd1d4cb"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中24小时同密码注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R06"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayPwdUseNumberOf7Hit",
+      "rule_name": "dayPwdUseNumberOf7Hit",
+      "rule_name_cn": "本次注册密码在过去7天内注册用户大于N个",
+      "status": "active",
+      "priority": 4,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同密码7d注册量",
+            "operator": ">",
+            "value": 10
+          },
+          {
+            "or": [
+              {
+                "var": "客户端平台",
+                "operator": "not in",
+                "value": [
+                  "IPHONE_APP"
+                ]
+              },
+              {
+                "var": "当前注册用户密码",
+                "operator": "not in",
+                "value": [
+                  "5dc9cc08bc6fab736738c8560fd1d4cb"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中7天同密码注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R06"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "dayPwdUseNumberOf30Hit",
+      "rule_name": "dayPwdUseNumberOf30Hit",
+      "rule_name_cn": "本次注册密码在过去30天内注册用户大于N个",
+      "status": "active",
+      "priority": 5,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "同密码30d注册量",
+            "operator": ">",
+            "value": 20
+          },
+          {
+            "or": [
+              {
+                "var": "客户端平台",
+                "operator": "not in",
+                "value": [
+                  "IPHONE_APP"
+                ]
+              },
+              {
+                "var": "当前注册用户密码",
+                "operator": "not in",
+                "value": [
+                  "5dc9cc08bc6fab736738c8560fd1d4cb"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中30天同密码注册次数超限",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R06"
+      ],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "HighRiskPolicyHit",
+      "rule_name": "HighRiskPolicyHit",
+      "rule_name_cn": "命中高风险策略规则",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "var": "命中设备高风险规则",
+        "operator": "is true"
+      },
+      "assignment_expression": [],
+      "action": "reject",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "procesVariable",
+      "rule_name": "procesVariable",
+      "rule_name_cn": "加工变量-高级模式",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": "visual_innerFunc_register_procesVariable ( 站点类型 , 设备指纹 , 用户邮箱前缀密文 , 注册用户IP , 请求时间 , s , e , o ) 站点类型 设备指纹 用户邮箱前缀密文 注册用户IP 请求时间 羊毛标签 批量注册标签",
+      "assignment_expression": [],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipRateLimit",
+      "rule_name": "ipRateLimit",
+      "rule_name_cn": "直接限频",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "or": [
+          {
+            "var": "请求时间",
+            "operator": "<",
+            "value": "设备限频结束时间点"
+          },
+          {
+            "var": "请求时间",
+            "operator": "<",
+            "value": "新设备-设备限频结束时间点"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "指纹限流特征加工依赖因子",
+          "operator": "set",
+          "value": 0
+        },
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": {
+            "function": "true",
+            "args": [
+              "请求时间 < ip限频结束时间点"
+            ]
+          }
+        },
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "ip限流特征加工依赖因子",
+          "operator": "set",
+          "value": 0
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountLimitExternal",
+      "rule_name": "ipCountLimitExternal",
+      "rule_name_cn": "极简注册次数限频",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "ip近1小时注册次数",
+            "operator": ">",
+            "value": 20
+          },
+          {
+            "var": "外部账号渠道",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": "true 触发ip限流 ( 请求时间 , 1小时(ms) , 注册用户IP )"
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "ipCountLimit",
+      "rule_name": "ipCountLimit",
+      "rule_name_cn": "注册次数限频",
+      "status": "active",
+      "priority": 3,
+      "hit_expression": {
+        "var": "ip近1小时注册次数",
+        "operator": ">",
+        "value": 50
+      },
+      "assignment_expression": [
+        {
+          "var": "限频标识",
+          "operator": "set",
+          "value": "true 触发ip限流 ( 请求时间 , 1小时(ms) , 注册用户IP )"
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [
+        "R04"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "c_feature_init",
+      "rule_name": "c_feature_init",
+      "rule_name_cn": "特征变量初始化",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "and": [
+                      {
+                        "and": [
+                          {
+                            "and": [
+                              {
+                                "and": [
+                                  {
+                                    "and": [
+                                      {
+                                        "and": [
+                                          {
+                                            "and": [
+                                              {
+                                                "and": [
+                                                  {
+                                                    "and": [
+                                                      {
+                                                        "and": [
+                                                          {
+                                                            "and": [
+                                                              {
+                                                                "and": [
+                                                                  {
+                                                                    "and": [
+                                                                      {
+                                                                        "and": [
+                                                                          {
+                                                                            "and": [
+                                                                              {
+                                                                                "and": [
+                                                                                  {
+                                                                                    "and": [
+                                                                                      {
+                                                                                        "and": [
+                                                                                          {
+                                                                                            "and": [
+                                                                                              {
+                                                                                                "and": [
+                                                                                                  "设备模糊指纹",
+                                                                                                  "近24小时同GPS注册用户数"
+                                                                                                ]
+                                                                                              },
+                                                                                              "近14天同GPS注册量中位数"
+                                                                                            ]
+                                                                                          },
+                                                                                          "近24小时同GPS同邀请人注册用户数"
+                                                                                        ]
+                                                                                      },
+                                                                                      "近24小时同GPS同canvas注册用户数"
+                                                                                    ]
+                                                                                  },
+                                                                                  "近7天同GPS同canvas注册用户数"
+                                                                                ]
+                                                                              },
+                                                                              "近24小时同GPS同设备模糊ID注册用户数"
+                                                                            ]
+                                                                          },
+                                                                          "近7天同GPS同设备模糊ID注册用户数"
+                                                                        ]
+                                                                      },
+                                                                      "近3小时同GPS注册用户数"
+                                                                    ]
+                                                                  },
+                                                                  "近3小时同GPS同canvas注册用户数"
+                                                                ]
+                                                              },
+                                                              "近3小时同GPS同设备模糊ID注册用户数"
+                                                            ]
+                                                          },
+                                                          "近3小时同GPS同邀请人注册用户数"
+                                                        ]
+                                                      },
+                                                      "用户ID最后一位"
+                                                    ]
+                                                  },
+                                                  "手机号关联注销用户列表"
+                                                ]
+                                              },
+                                              "手机号关联注销羊毛用户列表"
+                                            ]
+                                          },
+                                          "邮箱关联注销用户列表"
+                                        ]
+                                      },
+                                      "邮箱关联注销羊毛用户列表"
+                                    ]
+                                  },
+                                  "设备价值模型请求参数"
+                                ]
+                              },
+                              "设备价值模型返回值"
+                            ]
+                          },
+                          "设备价值模型分数"
+                        ]
+                      },
+                      "过去10min时间同IP国家同设备模糊ID注册次数"
+                    ]
+                  },
+                  "过去1h同IP国家同设备模糊ID注册次数"
+                ]
+              },
+              "过去10min同IP国家同音量同电量同屏幕亮度注册次数"
+            ]
+          },
+          "过去1h时间同IP国家同音量同电量同屏幕亮度注册次数"
+        ]
+      },
+      "assignment_expression": [],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "SMS_IP_Country_Conflict",
+      "rule_name": "SMS_IP_Country_Conflict",
+      "rule_name_cn": "短信号码国家和IP冲突",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "and": [
+              {
+                "and": [
+                  {
+                    "var": "注册手机号归属国家",
+                    "operator": "!=",
+                    "value": "ip国家码(解析)"
+                  },
+                  {
+                    "or": [
+                      {
+                        "var": "注册手机号归属国家",
+                        "operator": "in",
+                        "value": [
+                          "UA",
+                          "BD",
+                          "IN",
+                          "PK"
+                        ]
+                      },
+                      {
+                        "var": "ip国家码(解析)",
+                        "operator": "in",
+                        "value": [
+                          "UA",
+                          "BD",
+                          "IN",
+                          "PK"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "var": "ip国家码(解析)",
+                "operator": "exist"
+              }
+            ]
+          },
+          {
+            "var": "注册手机号归属国家",
+            "operator": "exist"
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中短信号码国家和IP冲突",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R09"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "Black_Carrier",
+      "rule_name": "Black_Carrier",
+      "rule_name_cn": "手机号运营商黑名单",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "function": "new_判定名单内容是否命中",
+        "args": [
+          "W1879422788783542272",
+          "手机号对应运营商"
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "羊毛标签",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "命中运营商黑名单",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "review",
+      "reason_codes": [
+        "R09"
+      ],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    },
+    {
+      "rule_id": "StartWithZero",
+      "rule_name": "StartWithZero",
+      "rule_name_cn": "0开头的规则",
+      "status": "inactive",
+      "priority": 3,
+      "hit_expression": {
+        "or": [
+          {
+            "var": "-0",
+            "operator": "in",
+            "value": "用户手机号"
+          },
+          {
+            "and": [
+              {
+                "var": "-",
+                "operator": "not in",
+                "value": "用户手机号"
+              },
+              {
+                "var": "用户手机号",
+                "operator": "start with",
+                "value": "0"
+              }
+            ]
+          }
+        ]
+      },
+      "assignment_expression": [
+        {
+          "var": "命中0开头手机号",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "ipBlackExist",
+      "rule_name": "ipBlackExist",
+      "rule_name_cn": "ip是否存在黑名单中",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "var": "是否命中注册IP黑名单",
+        "operator": "is true"
+      },
+      "assignment_expression": [
+        {
+          "var": "命中ip黑名单",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "是否命中ip新黑名单",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "pass",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "deviceBlackExist",
+      "rule_name": "deviceBlackExist",
+      "rule_name_cn": "设备是否存在黑名单中",
+      "status": "active",
+      "priority": 2,
+      "hit_expression": {
+        "var": "是否命中注册设备黑名单",
+        "operator": "is true"
+      },
+      "assignment_expression": [
+        {
+          "var": "命中设备黑名单",
+          "operator": "set",
+          "value": true
+        },
+        {
+          "var": "是否命中设备新黑名单",
+          "operator": "set",
+          "value": true
+        }
+      ],
+      "action": "reject",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "1"
+      }
+    },
+    {
+      "rule_id": "TG_KC_bind_cntLimit",
+      "rule_name": "TG_KC_bind_cntLimit",
+      "rule_name_cn": "TG账号换绑限制",
+      "status": "active",
+      "priority": 1,
+      "hit_expression": {
+        "and": [
+          {
+            "var": "注册类型",
+            "operator": "=",
+            "value": "TG"
+          },
+          {
+            "var": "当前TG账号24小时内绑定过多少次KC账号",
+            "operator": ">=",
+            "value": 3
+          }
+        ]
+      },
+      "assignment_expression": [],
+      "action": "reject",
+      "reason_codes": [],
+      "metadata": {
+        "source_node_status": "0"
+      }
+    }
+  ]
+}

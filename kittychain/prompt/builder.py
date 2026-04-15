@@ -48,10 +48,8 @@ You help with software engineering: writing code, fixing bugs, refactoring, expl
 - OS: {uname.system} {uname.release} ({uname.machine})
 - Python: {platform.python_version()}
 
-# Tools
-{tool_list}
-
 # Skills
+The following skills have provided instructions for how to use their tools:
 {skill_block}
 
 # Reminder Tags

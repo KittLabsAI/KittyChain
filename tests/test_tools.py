@@ -2039,7 +2039,6 @@ class ToolsTests(unittest.TestCase):
 
                 self.assertEqual(output_row["strategy_result"], expected_strategy)
                 self.assertEqual(output_reasons, expected_reasons)
-
     def test_token_holders_tool_is_registered(self):
         from kittychain.tools import get_tool
 

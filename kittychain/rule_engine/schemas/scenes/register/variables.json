@@ -1,0 +1,4523 @@
+{
+  "scene_key": "register",
+  "variables": [
+    {
+      "variable_key": "fingerPidSm",
+      "variable_name": "数美设备指纹主键",
+      "scope": "input",
+      "data_type": "string",
+      "description": "数美设备指纹主键",
+      "source_path": "s.fingerPidSm",
+      "default_value": "BiIPvowCzql/Cvh7hla72O3o/MUcf106OXR4X4RtcmIg+Pkd4LQHp8cvlPdj3XCkHIMYejmMnezpME/E0beYfHw==",
+      "examples": [
+        "BiIPvowCzql/Cvh7hla72O3o/MUcf106OXR4X4RtcmIg+Pkd4LQHp8cvlPdj3XCkHIMYejmMnezpME/E0beYfHw=="
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "fingerPidSm"
+      }
+    },
+    {
+      "variable_key": "fingerIdSm",
+      "variable_name": "数美设备指纹",
+      "scope": "input",
+      "data_type": "string",
+      "description": "数美设备指纹",
+      "source_path": "s.fingerIdSm",
+      "default_value": "20260228165348665cf2377abfb3cd5d9365a374490bd7012d241e76fc38ff",
+      "examples": [
+        "20260228165348665cf2377abfb3cd5d9365a374490bd7012d241e76fc38ff"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "fingerIdSm"
+      }
+    },
+    {
+      "variable_key": "requestTime",
+      "variable_name": "请求时间",
+      "scope": "input",
+      "data_type": "string",
+      "description": "请求时间",
+      "source_path": "s.requestTime",
+      "default_value": "1772297691862",
+      "examples": [
+        "1772297691862"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "siteType",
+      "variable_name": "站点类型",
+      "scope": "input",
+      "data_type": "string",
+      "description": "站点类型",
+      "source_path": "s.siteType",
+      "default_value": "global",
+      "examples": [
+        "global"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "siteType"
+      }
+    },
+    {
+      "variable_key": "userId",
+      "variable_name": "userId",
+      "scope": "input",
+      "data_type": "string",
+      "description": "userId",
+      "source_path": "s.userId",
+      "default_value": "",
+      "examples": [
+        ""
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "registerType",
+      "variable_name": "注册类型",
+      "scope": "input",
+      "data_type": "string",
+      "description": "注册类型",
+      "source_path": "s.registerType",
+      "default_value": "EMAIL",
+      "examples": [
+        "EMAIL"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "externalAcctID",
+      "variable_name": "用户外部账号",
+      "scope": "input",
+      "data_type": "string",
+      "description": "用户外部账号",
+      "source_path": "s.externalAcctID",
+      "default_value": "106165423720179156923",
+      "examples": [
+        "106165423720179156923"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "externalAcctID"
+      }
+    },
+    {
+      "variable_key": "fingerId_copy1",
+      "variable_name": "用户设备指纹id",
+      "scope": "input",
+      "data_type": "unknown",
+      "description": "用户设备指纹id",
+      "source_path": "s.fingerId_copy1",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "tgUserName",
+      "variable_name": "TG的账号username",
+      "scope": "input",
+      "data_type": "unknown",
+      "description": "TG的账号username",
+      "source_path": "s.tgUserName",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "tgAcctLastName",
+      "variable_name": "TG的账号last name",
+      "scope": "input",
+      "data_type": "unknown",
+      "description": "TG的账号last name",
+      "source_path": "s.tgAcctLastName",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "tgAcctFirstName",
+      "variable_name": "TG的账号first name",
+      "scope": "input",
+      "data_type": "unknown",
+      "description": "TG的账号first name",
+      "source_path": "s.tgAcctFirstName",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "InviterexternalAcctID",
+      "variable_name": "邀请人外部账号",
+      "scope": "input",
+      "data_type": "string",
+      "description": "邀请人外部账号",
+      "source_path": "s.InviterexternalAcctID",
+      "default_value": "103967505905066831526",
+      "examples": [
+        "103967505905066831526"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "externalChannel",
+      "variable_name": "外部账号渠道",
+      "scope": "input",
+      "data_type": "string",
+      "description": "外部账号渠道",
+      "source_path": "s.externalChannel",
+      "default_value": "GO",
+      "examples": [
+        "GO"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "regUserPwd",
+      "variable_name": "当前注册用户密码",
+      "scope": "input",
+      "data_type": "string",
+      "description": "当前注册用户密码",
+      "source_path": "s.regUserPwd",
+      "default_value": "2656be06e5dd89d25bd59b5a1959b667",
+      "examples": [
+        "2656be06e5dd89d25bd59b5a1959b667"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "regUserPhone",
+      "variable_name": "用户手机号",
+      "scope": "input",
+      "data_type": "unknown",
+      "description": "用户手机号",
+      "source_path": "s.regUserPhone",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "inviterUserPwd",
+      "variable_name": "邀请人密码",
+      "scope": "input",
+      "data_type": "string",
+      "description": "邀请人密码",
+      "source_path": "s.inviterUserPwd",
+      "default_value": "363433b4a6606253009535c3017fa8c5",
+      "examples": [
+        "363433b4a6606253009535c3017fa8c5"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "regUserIp",
+      "variable_name": "注册用户IP",
+      "scope": "input",
+      "data_type": "string",
+      "description": "注册用户IP",
+      "source_path": "s.ip",
+      "default_value": "119.234.27.236",
+      "examples": [
+        "119.234.27.236"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "ip"
+      }
+    },
+    {
+      "variable_key": "regUserId",
+      "variable_name": "注册用户ID",
+      "scope": "input",
+      "data_type": "string",
+      "description": "注册用户ID",
+      "source_path": "s.userId",
+      "default_value": "",
+      "examples": [
+        ""
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "userId"
+      }
+    },
+    {
+      "variable_key": "fingerPid",
+      "variable_name": "设备指纹主键",
+      "scope": "input",
+      "data_type": "string",
+      "description": "设备指纹主键",
+      "source_path": "s.fingerPid",
+      "default_value": "69a31dab2effe3000181c88e",
+      "examples": [
+        "69a31dab2effe3000181c88e"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "fingerPid"
+      }
+    },
+    {
+      "variable_key": "fingerId",
+      "variable_name": "设备指纹",
+      "scope": "input",
+      "data_type": "string",
+      "description": "设备指纹",
+      "source_path": "s.fingerId",
+      "default_value": "bcb570dec461b218bcaf49e6598a0c09",
+      "examples": [
+        "bcb570dec461b218bcaf49e6598a0c09"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": "fingerId"
+      }
+    },
+    {
+      "variable_key": "requestIp",
+      "variable_name": "服务ip",
+      "scope": "input",
+      "data_type": "string",
+      "description": "服务ip",
+      "source_path": "s.requestIp",
+      "default_value": "119.234.27.236",
+      "examples": [
+        "119.234.27.236"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "regDeviceId",
+      "variable_name": "老:设备id",
+      "scope": "input",
+      "data_type": "string",
+      "description": "老:设备id",
+      "source_path": "s.regDeviceId",
+      "default_value": "",
+      "examples": [
+        ""
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "sessionId",
+      "variable_name": "用户会话id",
+      "scope": "input",
+      "data_type": "string",
+      "description": "用户会话id",
+      "source_path": "s.sessionId",
+      "default_value": "8a1408b953597a566ea82fd4f86502b3",
+      "examples": [
+        "8a1408b953597a566ea82fd4f86502b3"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "ipRegion",
+      "variable_name": "ipRegion",
+      "scope": "input",
+      "data_type": "string",
+      "description": "ipRegion",
+      "source_path": "s.ipRegion",
+      "default_value": "Singapore Singapore",
+      "examples": [
+        "Singapore Singapore"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "lang",
+      "variable_name": "客户端语言",
+      "scope": "input",
+      "data_type": "string",
+      "description": "客户端语言",
+      "source_path": "s.lang",
+      "default_value": "en_US",
+      "examples": [
+        "en_US"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "phoneRegion",
+      "variable_name": "手机区号",
+      "scope": "input",
+      "data_type": "string",
+      "description": "手机区号",
+      "source_path": "s.phoneRegion",
+      "default_value": "84",
+      "examples": [
+        "84"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "platform",
+      "variable_name": "客户端平台",
+      "scope": "input",
+      "data_type": "string",
+      "description": "客户端平台",
+      "source_path": "s.platform",
+      "default_value": "ANDROID_APP",
+      "examples": [
+        "ANDROID_APP"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "inviterUserId",
+      "variable_name": "邀请人id",
+      "scope": "input",
+      "data_type": "string",
+      "description": "邀请人id",
+      "source_path": "s.inviterUserId",
+      "default_value": "64d25720ad00ec0001677de9",
+      "examples": [
+        "64d25720ad00ec0001677de9"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "system",
+      "variable_name": "请求系统",
+      "scope": "input",
+      "data_type": "string",
+      "description": "请求系统",
+      "source_path": "s.system",
+      "default_value": "UCENTER",
+      "examples": [
+        "UCENTER"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "bizType",
+      "variable_name": "业务类型",
+      "scope": "input",
+      "data_type": "string",
+      "description": "业务类型",
+      "source_path": "s.bizType",
+      "default_value": "register",
+      "examples": [
+        "register"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "fingerprint",
+      "variable_name": "fingerprint",
+      "scope": "input",
+      "data_type": "string",
+      "description": "fingerprint",
+      "source_path": "s.fingerprint",
+      "default_value": "bcb570dec461b218bcaf49e6598a0c09",
+      "examples": [
+        "bcb570dec461b218bcaf49e6598a0c09"
+      ],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "regUserEmail",
+      "variable_name": "注册邮箱",
+      "scope": "input",
+      "data_type": "unknown",
+      "description": "注册邮箱",
+      "source_path": "s.regUserEmail",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {
+        "alias": null
+      }
+    },
+    {
+      "variable_key": "email_30885_5d",
+      "variable_name": "邮箱关联注销羊毛用户列表",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "邮箱关联注销羊毛用户列表",
+      "source_path": "e.email_30885_5d",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_IPSiteEmailPrefix_regCnt_60m",
+      "variable_name": "同ip同站点相同邮箱前缀注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同ip同站点相同邮箱前缀注册次数",
+      "source_path": "e.c_IPSiteEmailPrefix_regCnt_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "site_finger_domain_country_70213_1440m",
+      "variable_name": "新设备-相同设备&邮箱后缀&国家码&站点的注册量-24h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-相同设备&邮箱后缀&国家码&站点的注册量-24h",
+      "source_path": "e.site_finger_domain_country_70213_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_2",
+      "variable_name": "gps(保留两位)",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "gps(保留两位)",
+      "source_path": "e.gps_2",
+      "default_value": "103.83&1.36",
+      "examples": [
+        "103.83&1.36"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_country_70105_7d",
+      "variable_name": "新设备-7天内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-7天内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "source_path": "e.finger_country_70105_7d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_emailPrefixSite_regUserCnt_1h",
+      "variable_name": "同邮箱前缀同站点注册量 - 1h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同邮箱前缀同站点注册量 - 1h",
+      "source_path": "e.c_emailPrefixSite_regUserCnt_1h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phonePrefix_register",
+      "variable_name": "手机前缀密文",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "手机前缀密文",
+      "source_path": "e.phonePrefix_register",
+      "default_value": "eW7nzkqctSkT5ic/kOscew==",
+      "examples": [
+        "eW7nzkqctSkT5ic/kOscew=="
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hourIpUseNumberHit",
+      "variable_name": "命中24小时同ip注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中24小时同ip注册次数超限",
+      "source_path": "e.hourIpUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "reg_phone_country_decrypt",
+      "variable_name": "注册手机号归属国家",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "注册手机号归属国家",
+      "source_path": "e.reg_phone_country_decrypt",
+      "default_value": "VN",
+      "examples": [
+        "VN"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "bulk_reg_detect_response",
+      "variable_name": "批量注册识别模型结果",
+      "scope": "derived",
+      "data_type": "other",
+      "description": "批量注册识别模型结果",
+      "source_path": "e.bulk_reg_detect_response",
+      "default_value": {
+        "code": "200",
+        "data": "9.3",
+        "success": true,
+        "extra": {},
+        "message": "操作成功."
+      },
+      "examples": [
+        {
+          "code": "200",
+          "data": "9.3",
+          "success": true,
+          "extra": {},
+          "message": "操作成功."
+        }
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "batch_finger_web_register",
+      "variable_name": "命中批量注册web端设备相关规则",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中批量注册web端设备相关规则",
+      "source_path": "e.batch_finger_web_register",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "EmailPrefixRandomnessHit",
+      "variable_name": "命中邮箱前缀乱码识别",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中邮箱前缀乱码识别",
+      "source_path": "e.EmailPrefixRandomnessHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_80017",
+      "variable_name": "ip限频结束时间点",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "ip限频结束时间点",
+      "source_path": "e.ip_80017",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50979_60m",
+      "variable_name": "相似手机1h注册数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似手机1h注册数量",
+      "source_path": "e.phone_50979_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "InviteIp",
+      "variable_name": "邀请人ip",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "邀请人ip",
+      "source_path": "e.InviteIp",
+      "default_value": "2402:1980:8810:564e:643c:b96b:c14:a3e2",
+      "examples": [
+        "2402:1980:8810:564e:643c:b96b:c14:a3e2"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "bulk_reg_detect_model_url",
+      "variable_name": "批量注册识别模型URL",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "批量注册识别模型URL",
+      "source_path": "e.bulk_reg_detect_model_url",
+      "default_value": "https://dc-ms.kcprd.com/dc-ms-bulkreg-detect/predict",
+      "examples": [
+        "https://dc-ms.kcprd.com/dc-ms-bulkreg-detect/predict"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_30887_5d",
+      "variable_name": "手机号关联注销羊毛用户列表",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "手机号关联注销羊毛用户列表",
+      "source_path": "e.phone_30887_5d",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isRootHit",
+      "variable_name": "isRootHit",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "isRootHit",
+      "source_path": "e.isRootHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_emailSuffix_70372_60m",
+      "variable_name": "IP国家和邮箱后缀近1小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家和邮箱后缀近1小时注册数",
+      "source_path": "e.country_emailSuffix_70372_60m",
+      "default_value": -4.0,
+      "examples": [
+        -4.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "limit_email_list",
+      "variable_name": "临时禁止注册邮箱列表",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "临时禁止注册邮箱列表",
+      "source_path": "e.limit_email_list",
+      "default_value": "too long size: 197, content: hldrive.com, wireconnected.com, desertsundesigns.com, emailaoa.pro, skygazerhub.com, waterisgone.com, rentforsale7.com, tippabble.com, myinfoinc.com, greencafe24.com",
+      "examples": [
+        "too long size: 197, content: hldrive.com, wireconnected.com, desertsundesigns.com, emailaoa.pro, skygazerhub.com, waterisgone.com, rentforsale7.com, tippabble.com, myinfoinc.com, greencafe24.com"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "m_web_finger_abnormal_flag",
+      "variable_name": "设备指纹web聚集豁免",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "设备指纹web聚集豁免",
+      "source_path": "e.m_web_finger_abnormal_flag",
+      "default_value": 0,
+      "examples": [
+        0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_70443_24h",
+      "variable_name": "同密码且使用小众邮箱近24小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同密码且使用小众邮箱近24小时注册数",
+      "source_path": "e.pwd_70443_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "domain_emailPrefix_50967_1440m",
+      "variable_name": "相似邮箱24h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱24h注册量",
+      "source_path": "e.domain_emailPrefix_50967_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpCountryFingerEmpty1HourHit",
+      "variable_name": "命中IP国家近1小时设备指纹为空",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中IP国家近1小时设备指纹为空",
+      "source_path": "e.IpCountryFingerEmpty1HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "filesDirBlack",
+      "variable_name": "APP设备filesDir黑名单",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "APP设备filesDir黑名单",
+      "source_path": "e.filesDirBlack",
+      "default_value": [
+        "/data/user/0/dkapp.bdn.bnp/chaos/data/user/0/com.kubi.kucoin/files",
+        "/data/user/0/com.app.calculator.vault.hider/gaia/data/user/0/com.kubi.kucoin/files",
+        "/data/user/0/com.app.hider.master.pro/gaia/data/user/0/com.kubi.kucoin/files",
+        "/data/data/com.parallel.space.lite/parallel_lite/0/com.kubi.kucoin/files",
+        "/data/user/0/dkapp.jsb.llc/chaos/data/user/0/com.kubi.kucoin/files",
+        "/data/user/0/com.app.notepad.vault.hider/gaia/data/user/0/com.kubi.kucoin/files",
+        "/data/user/0/com.dualspace.cloneapp.parallelspace.privacy/pb/data/user/0/com.kubi.kucoin/files",
+        "/data/user/0/dkapp.fph.qfr/chaos/data/user/0/com.kubi.kucoin/files",
+        "/data/user/0/com.app.hider.master.vault.dialer/gaia/data/user/0/com.kubi.kucoin/files"
+      ],
+      "examples": [
+        [
+          "/data/user/0/dkapp.bdn.bnp/chaos/data/user/0/com.kubi.kucoin/files",
+          "/data/user/0/com.app.calculator.vault.hider/gaia/data/user/0/com.kubi.kucoin/files",
+          "/data/user/0/com.app.hider.master.pro/gaia/data/user/0/com.kubi.kucoin/files",
+          "/data/data/com.parallel.space.lite/parallel_lite/0/com.kubi.kucoin/files",
+          "/data/user/0/dkapp.jsb.llc/chaos/data/user/0/com.kubi.kucoin/files",
+          "/data/user/0/com.app.notepad.vault.hider/gaia/data/user/0/com.kubi.kucoin/files",
+          "/data/user/0/com.dualspace.cloneapp.parallelspace.privacy/pb/data/user/0/com.kubi.kucoin/files",
+          "/data/user/0/dkapp.fph.qfr/chaos/data/user/0/com.kubi.kucoin/files",
+          "/data/user/0/com.app.hider.master.vault.dialer/gaia/data/user/0/com.kubi.kucoin/files"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50980_168h",
+      "variable_name": "相似手机7d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似手机7d注册量",
+      "source_path": "e.phone_50980_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "site_emailPrefixAes_finger_51506_60m",
+      "variable_name": "新设备-同设备相同邮箱前缀注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-同设备相同邮箱前缀注册次数",
+      "source_path": "e.site_emailPrefixAes_finger_51506_60m",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_emailPrefixSite_regUserCnt_30day",
+      "variable_name": "同邮箱前缀同站点注册量 - 30天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同邮箱前缀同站点注册量 - 30天",
+      "source_path": "e.c_emailPrefixSite_regUserCnt_30day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_50936_168h",
+      "variable_name": "同密码7d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同密码7d注册量",
+      "source_path": "e.pwd_50936_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_deviceFuzzyId_30785_7d",
+      "variable_name": "近7天同GPS同设备模糊ID注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近7天同GPS同设备模糊ID注册用户数",
+      "source_path": "e.gps_deviceFuzzyId_30785_7d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hitRegisterIpBlackList",
+      "variable_name": "是否命中注册IP黑名单",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否命中注册IP黑名单",
+      "source_path": "e.hitRegisterIpBlackList",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hit_app_black_reasonCode",
+      "variable_name": "设备黑名单原因码",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "设备黑名单原因码",
+      "source_path": "e.hit_app_black_reasonCode",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "whiteCountryUser",
+      "variable_name": "特殊国家注册用户",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "特殊国家注册用户",
+      "source_path": "e.whiteCountryUser",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "email_prefix_entropy",
+      "variable_name": "注册邮箱前缀信息熵",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "注册邮箱前缀信息熵",
+      "source_path": "e.email_prefix_entropy",
+      "default_value": 3.5032583359332046,
+      "examples": [
+        3.5032583359332046
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "allPhone",
+      "variable_name": "手机号密文",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "手机号密文",
+      "source_path": "e.allPhone",
+      "default_value": "KXJck+Pdbszs6HLjpxR2/w==",
+      "examples": [
+        "KXJck+Pdbszs6HLjpxR2/w=="
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "conf_commonMailbox",
+      "variable_name": "常量-常用域名",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "常量-常用域名",
+      "source_path": "e.conf_commonMailbox",
+      "default_value": "['gmail.com', 'outlook.com', 'hotmail.com','kupotech.com', 'yahoo.com', 'protonmail.com',  'icloud.com', 'naver.com', '163.com', 'mail.ru','yandex.com','flashdot.com']",
+      "examples": [
+        "['gmail.com', 'outlook.com', 'hotmail.com','kupotech.com', 'yahoo.com', 'protonmail.com',  'icloud.com', 'naver.com', '163.com', 'mail.ru','yandex.com','flashdot.com']"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "samePwd",
+      "variable_name": "命中与邀请人同密码",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中与邀请人同密码",
+      "source_path": "e.samePwd",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "inviter_user_70115",
+      "variable_name": "新设备-老：邀请人最近1次登录设备",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "新设备-老：邀请人最近1次登录设备",
+      "source_path": "e.inviter_user_70115",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "rateLimitTag",
+      "variable_name": "限频标识",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "限频标识",
+      "source_path": "e.rateLimitTag",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "site_emailPrefixAes_finger_70197_60m",
+      "variable_name": "新设备-同设备同站点相同邮箱前缀注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-同设备同站点相同邮箱前缀注册次数",
+      "source_path": "e.site_emailPrefixAes_finger_70197_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayEmailUseNumberOf7Hit",
+      "variable_name": "命中7d同邮箱前缀注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中7d同邮箱前缀注册次数超限",
+      "source_path": "e.dayEmailUseNumberOf7Hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_countryCity_70107_7d",
+      "variable_name": "新设备-7天内内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-7天内内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "source_path": "e.finger_countryCity_70107_7d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_isoCode_contry",
+      "variable_name": "ip国家码(解析)",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "ip国家码(解析)",
+      "source_path": "e.ip_isoCode_contry",
+      "default_value": "SG",
+      "examples": [
+        "SG"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "common_email_suffix_list",
+      "variable_name": "常见邮箱后缀列表",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "常见邮箱后缀列表",
+      "source_path": "e.common_email_suffix_list",
+      "default_value": [
+        "gmail.com",
+        "hotmail.com",
+        "privaterelay.appleid.com",
+        "icloud.com",
+        "yahoo.com",
+        "outlook.com",
+        "mail.ru",
+        "proton.me",
+        "yandex.ru",
+        "protonmail.com"
+      ],
+      "examples": [
+        [
+          "gmail.com",
+          "hotmail.com",
+          "privaterelay.appleid.com",
+          "icloud.com",
+          "yahoo.com",
+          "outlook.com",
+          "mail.ru",
+          "proton.me",
+          "yandex.ru",
+          "protonmail.com"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isWeb",
+      "variable_name": "是否web端",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否web端",
+      "source_path": "e.isWeb",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70380_60m",
+      "variable_name": "IP国家近1小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近1小时注册数",
+      "source_path": "e.country_70380_60m",
+      "default_value": 5.0,
+      "examples": [
+        5.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50956_720h",
+      "variable_name": "相同手机前缀30d注册数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同手机前缀30d注册数量",
+      "source_path": "e.phone_50956_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "device_black_new",
+      "variable_name": "是否命中设备新黑名单",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否命中设备新黑名单",
+      "source_path": "e.device_black_new",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerId_CountryCity_regUser_cnt_1mth",
+      "variable_name": "1个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "1个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "source_path": "e.c_fingerId_CountryCity_regUser_cnt_1mth",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "FinalModelScore_test",
+      "variable_name": "FinalModelScore_test",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "FinalModelScore_test",
+      "source_path": "e.FinalModelScore_test",
+      "default_value": 0,
+      "examples": [
+        0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_14d_median",
+      "variable_name": "近14天GPS注册量中位数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近14天GPS注册量中位数",
+      "source_path": "e.gps_14d_median",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isMultiOpenHighRiskHit",
+      "variable_name": "是否命中多开高风险规则",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否命中多开高风险规则",
+      "source_path": "e.isMultiOpenHighRiskHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_phoneSite_regUser_1h",
+      "variable_name": "同站点相同手机前缀注册用户数-1h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同站点相同手机前缀注册用户数-1h",
+      "source_path": "e.c_phoneSite_regUser_1h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70070_720h",
+      "variable_name": "新设备-同设备30d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-同设备30d注册量",
+      "source_path": "e.finger_70070_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isMobileClient",
+      "variable_name": "是否移动端",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否移动端",
+      "source_path": "e.isMobileClient",
+      "default_value": true,
+      "examples": [
+        true
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps1_50976_1h",
+      "variable_name": "gps1h注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "gps1h注册量_保留1",
+      "source_path": "e.gps1_50976_1h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_50932_720h",
+      "variable_name": "同IP30d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同IP30d注册量",
+      "source_path": "e.ip_50932_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70381_24h",
+      "variable_name": "IP国家近24小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近24小时注册数",
+      "source_path": "e.country_70381_24h",
+      "default_value": 56.0,
+      "examples": [
+        56.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isDeviceHighRiskHit",
+      "variable_name": "命中设备高风险规则",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中设备高风险规则",
+      "source_path": "e.isDeviceHighRiskHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_30772_24h",
+      "variable_name": "近24小时同GPS注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近24小时同GPS注册用户数",
+      "source_path": "e.gps_30772_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_countryCity_70107_30d",
+      "variable_name": "新设备-1个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-1个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "source_path": "e.finger_countryCity_70107_30d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerId_Country_regUser_cnt_7Day",
+      "variable_name": "7天内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "7天内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "source_path": "e.c_fingerId_Country_regUser_cnt_7Day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_50931_60m",
+      "variable_name": "同IP1h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同IP1h注册量",
+      "source_path": "e.ip_50931_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "sameEquipmentMailboxSmall",
+      "variable_name": "命中相同设备邮箱小号",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中相同设备邮箱小号",
+      "source_path": "e.sameEquipmentMailboxSmall",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerEmailSuffixCountrySite_regCnt_7day",
+      "variable_name": "相同设备&邮箱后缀&国家码&站点的注册量 - 7天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同设备&邮箱后缀&国家码&站点的注册量 - 7天",
+      "source_path": "e.c_fingerEmailSuffixCountrySite_regCnt_7day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70069_1440m",
+      "variable_name": "新设备-相同设备24h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-相同设备24h注册量",
+      "source_path": "e.finger_70069_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "androidFingerMapClientType",
+      "variable_name": "设备指纹客户端是否安卓端",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "设备指纹客户端是否安卓端",
+      "source_path": "e.androidFingerMapClientType",
+      "default_value": true,
+      "examples": [
+        true
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_70444_60m",
+      "variable_name": "同密码且使用小众邮箱近1小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同密码且使用小众邮箱近1小时注册数",
+      "source_path": "e.pwd_70444_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipCountry_deviceFuzzyId_220322_60min",
+      "variable_name": "过去1h同IP国家同设备模糊ID注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "过去1h同IP国家同设备模糊ID注册次数",
+      "source_path": "e.ipCountry_deviceFuzzyId_220322_60min",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70016",
+      "variable_name": "设备限频结束时间点",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "设备限频结束时间点",
+      "source_path": "e.finger_70016",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_50934_720h",
+      "variable_name": "同设备30d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同设备30d注册量",
+      "source_path": "e.finger_50934_720h",
+      "default_value": 1.0,
+      "examples": [
+        1.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_50931_1440m",
+      "variable_name": "同IP24h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同IP24h注册量",
+      "source_path": "e.ip_50931_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "email_domain_top500",
+      "variable_name": "常用邮箱域名TOP500",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "常用邮箱域名TOP500",
+      "source_path": "e.email_domain_top500",
+      "default_value": "too long size: 599, content: gmail.com, hotmail.com, outlook.com, yahoo.com, icloud.com, mail.ru, protonmail.com, privaterelay.appleid.com, naver.com, exdonuts.com",
+      "examples": [
+        "too long size: 599, content: gmail.com, hotmail.com, outlook.com, yahoo.com, icloud.com, mail.ru, protonmail.com, privaterelay.appleid.com, naver.com, exdonuts.com"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70381_168h",
+      "variable_name": "IP国家近7天注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近7天注册数",
+      "source_path": "e.country_70381_168h",
+      "default_value": 219.0,
+      "examples": [
+        219.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipBlackExist",
+      "variable_name": "命中ip黑名单",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中ip黑名单",
+      "source_path": "e.ipBlackExist",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerId_CountryCity_regUser_cnt_7Day",
+      "variable_name": "7天内内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "7天内内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "source_path": "e.c_fingerId_CountryCity_regUser_cnt_7Day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50955_1440m",
+      "variable_name": "相同手机前缀24h注册数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同手机前缀24h注册数量",
+      "source_path": "e.phone_50955_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_gps_70109_720h",
+      "variable_name": "新设备-gps30d注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-gps30d注册量_保留1",
+      "source_path": "e.finger_gps_70109_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "deviceBlackExist",
+      "variable_name": "命中设备黑名单",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中设备黑名单",
+      "source_path": "e.deviceBlackExist",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_canvas_30779_7d",
+      "variable_name": "近7天同GPS同canvas注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近7天同GPS同canvas注册用户数",
+      "source_path": "e.gps_canvas_30779_7d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "domain_emailPrefix_50968_720h",
+      "variable_name": "相似邮箱30d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱30d注册量",
+      "source_path": "e.domain_emailPrefix_50968_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50980_720h",
+      "variable_name": "相似手机30d注册量\t",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似手机30d注册量\t",
+      "source_path": "e.phone_50980_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "reg_email_aes",
+      "variable_name": "注册邮箱AES",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "注册邮箱AES",
+      "source_path": "e.reg_email_aes",
+      "default_value": "qrrhBV+0OO+oI/dhSizRBYd5T8fPZm5GIzUN8lNepAc=",
+      "examples": [
+        "qrrhBV+0OO+oI/dhSizRBYd5T8fPZm5GIzUN8lNepAc="
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps1_50977_30d",
+      "variable_name": "gps30d注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "gps30d注册量_保留1",
+      "source_path": "e.gps1_50977_30d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70091_60m",
+      "variable_name": "新设备-设备近1h注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-设备近1h注册次数",
+      "source_path": "e.finger_70091_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps24HourHit",
+      "variable_name": "命中24小时gps注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中24小时gps注册次数超限",
+      "source_path": "e.gps24HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayDeviceUseNumberOf7Hit",
+      "variable_name": "命中7天同设备注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中7天同设备注册次数超限",
+      "source_path": "e.dayDeviceUseNumberOf7Hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "similarPhone",
+      "variable_name": "相似带区号手机号(aes密文)",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "相似带区号手机号(aes密文)",
+      "source_path": "e.similarPhone",
+      "default_value": "Dt1D32Fbo+iDSifXuLR3eg==",
+      "examples": [
+        "Dt1D32Fbo+iDSifXuLR3eg=="
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70023_720h",
+      "variable_name": "同设备30d用户集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "同设备30d用户集合",
+      "source_path": "e.finger_70023_720h",
+      "default_value": [
+        "699c868d34a56e0001c197bf"
+      ],
+      "examples": [
+        [
+          "699c868d34a56e0001c197bf"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "sameIp",
+      "variable_name": "命中与邀请人同ip",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中与邀请人同ip",
+      "source_path": "e.sameIp",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_emailPrefixSite_regUserCnt_7day",
+      "variable_name": "同邮箱前缀同站点注册量 - 7天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同邮箱前缀同站点注册量 - 7天",
+      "source_path": "e.c_emailPrefixSite_regUserCnt_7day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "emailPrefixAes",
+      "variable_name": "用户邮箱前缀密文",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "用户邮箱前缀密文",
+      "source_path": "e.emailPrefixAes",
+      "default_value": "qrrhBV+0OO+oI/dhSizRBXb24xjkI9yxqeRIJu3yfHU=",
+      "examples": [
+        "qrrhBV+0OO+oI/dhSizRBXb24xjkI9yxqeRIJu3yfHU="
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70438_1d",
+      "variable_name": "IP国家近7天完成KYC3注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近7天完成KYC3注册数",
+      "source_path": "e.country_70438_1d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "emailPrefixAes_finger_1101_60m",
+      "variable_name": "同设备相同邮箱前缀注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同设备相同邮箱前缀注册次数",
+      "source_path": "e.emailPrefixAes_finger_1101_60m",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "inviter_user_70116",
+      "variable_name": "新设备-邀请人设备指纹",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "新设备-邀请人设备指纹",
+      "source_path": "e.inviter_user_70116",
+      "default_value": "2025050708270588eee2ce0b742b3091cdc65336a36d81015157f9be7cfa5c",
+      "examples": [
+        "2025050708270588eee2ce0b742b3091cdc65336a36d81015157f9be7cfa5c"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50979_1440m",
+      "variable_name": "相似手机24h注册数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似手机24h注册数量",
+      "source_path": "e.phone_50979_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerEmailSuffixCountrySite_regCnt_24h",
+      "variable_name": "相同设备&邮箱后缀&国家码&站点的注册量 - 24h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同设备&邮箱后缀&国家码&站点的注册量 - 24h",
+      "source_path": "e.c_fingerEmailSuffixCountrySite_regCnt_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "RegEmailPrefixLen",
+      "variable_name": "注册邮箱前缀长度",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "注册邮箱前缀长度",
+      "source_path": "e.RegEmailPrefixLen",
+      "default_value": 18,
+      "examples": [
+        18
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps2_50939_1h",
+      "variable_name": "gps1h注册量_保留2",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "gps1h注册量_保留2",
+      "source_path": "e.gps2_50939_1h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70441_168h",
+      "variable_name": "IP国家近7天设备指纹异常注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近7天设备指纹异常注册数",
+      "source_path": "e.country_70441_168h",
+      "default_value": 44.0,
+      "examples": [
+        44.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "minuteEmailUseNumberHit",
+      "variable_name": "命中60m同邮箱前缀注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中60m同邮箱前缀注册次数超限",
+      "source_path": "e.minuteEmailUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isMultiOpenHit",
+      "variable_name": "命中客户端多开",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中客户端多开",
+      "source_path": "e.isMultiOpenHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "bulk_reg_detect_score",
+      "variable_name": "批量注册识别模型分数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "批量注册识别模型分数",
+      "source_path": "e.bulk_reg_detect_score",
+      "default_value": 9.3,
+      "examples": [
+        9.3
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "minuteIpUseNumberHit",
+      "variable_name": "命中60分钟同ip注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中60分钟同ip注册次数超限",
+      "source_path": "e.minuteIpUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_30888_5d",
+      "variable_name": "手机号关联注销用户列表",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "手机号关联注销用户列表",
+      "source_path": "e.phone_30888_5d",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_emailSuffix_70373_24h",
+      "variable_name": "IP国家和邮箱后缀近24小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家和邮箱后缀近24小时注册数",
+      "source_path": "e.country_emailSuffix_70373_24h",
+      "default_value": -21.0,
+      "examples": [
+        -21.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "InviteEmail",
+      "variable_name": "邀请人邮箱",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "邀请人邮箱",
+      "source_path": "e.InviteEmail",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_countryCity_70107_180d",
+      "variable_name": "新设备-6个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-6个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "source_path": "e.finger_countryCity_70107_180d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "site_finger_domain_country_70212_720h",
+      "variable_name": "新设备-相同设备&邮箱后缀&国家码&站点的注册量 - 30天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-相同设备&邮箱后缀&国家码&站点的注册量 - 30天",
+      "source_path": "e.site_finger_domain_country_70212_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "site_finger_domain_country_70212_168h",
+      "variable_name": "新设备-相同设备&邮箱后缀&国家码&站点的注册量 - 7天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-相同设备&邮箱后缀&国家码&站点的注册量 - 7天",
+      "source_path": "e.site_finger_domain_country_70212_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_phoneSite_regUser_24h",
+      "variable_name": "同站点相同手机前缀注册用户数-24h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同站点相同手机前缀注册用户数-24h",
+      "source_path": "e.c_phoneSite_regUser_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_50933_60m",
+      "variable_name": "同设备1h注册量\t",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同设备1h注册量\t",
+      "source_path": "e.finger_50933_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "haveEmail",
+      "variable_name": "用户有邮箱标识",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "用户有邮箱标识",
+      "source_path": "e.haveEmail",
+      "default_value": true,
+      "examples": [
+        true
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_similarEmailSite_regUserCnt_1h",
+      "variable_name": "相似邮箱在当前站点注册量 - 1小时",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱在当前站点注册量 - 1小时",
+      "source_path": "e.c_similarEmailSite_regUserCnt_1h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_country_platform_70371_24h",
+      "variable_name": "IP国家平台密码近24小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家平台密码近24小时注册数",
+      "source_path": "e.pwd_country_platform_70371_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_30772_3h",
+      "variable_name": "近3小时同GPS注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近3小时同GPS注册用户数",
+      "source_path": "e.gps_30772_3h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps2_50939_24h",
+      "variable_name": "gps24h注册量_保留2",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "gps24h注册量_保留2",
+      "source_path": "e.gps2_50939_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_50936_720h",
+      "variable_name": "同密码30d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同密码30d注册量",
+      "source_path": "e.pwd_50936_720h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "batchTag",
+      "variable_name": "批量注册标签",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "批量注册标签",
+      "source_path": "e.batchTag",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70433_1d",
+      "variable_name": "IP国家近1天KYC不一致注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近1天KYC不一致注册数",
+      "source_path": "e.country_70433_1d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50955_60m",
+      "variable_name": "相同手机前缀1h注册数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同手机前缀1h注册数量",
+      "source_path": "e.phone_50955_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70437_1d",
+      "variable_name": "IP国家近30天完成KYC3注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近30天完成KYC3注册数",
+      "source_path": "e.country_70437_1d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_14d_median_new",
+      "variable_name": "近14天同GPS注册量中位数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近14天同GPS注册量中位数",
+      "source_path": "e.gps_14d_median_new",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpCountryFingerEmpty7DayHit",
+      "variable_name": "命中IP国家近7天设备指纹为空",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中IP国家近7天设备指纹为空",
+      "source_path": "e.IpCountryFingerEmpty7DayHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayIpUseNumberOf7Hit",
+      "variable_name": "命中7天同ip注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中7天同ip注册次数超限",
+      "source_path": "e.dayIpUseNumberOf7Hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_emailSuffix_70373_168h",
+      "variable_name": "IP国家和邮箱后缀近7天注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家和邮箱后缀近7天注册数",
+      "source_path": "e.country_emailSuffix_70373_168h",
+      "default_value": -96.0,
+      "examples": [
+        -96.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone30DayHit",
+      "variable_name": "命中30d手机号注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中30d手机号注册次数超限",
+      "source_path": "e.phone30DayHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_phoneSite_regUser_30day",
+      "variable_name": "同站点相同手机前缀注册用户数-30天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同站点相同手机前缀注册用户数-30天",
+      "source_path": "e.c_phoneSite_regUser_30day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipCountry_deviceFuzzyId_220322_10min",
+      "variable_name": "过去10min时间同IP国家同设备模糊ID注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "过去10min时间同IP国家同设备模糊ID注册次数",
+      "source_path": "e.ipCountry_deviceFuzzyId_220322_10min",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "woolTag",
+      "variable_name": "羊毛标签",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "羊毛标签",
+      "source_path": "e.woolTag",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70070_168h",
+      "variable_name": "新设备-同设备7d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-同设备7d注册量",
+      "source_path": "e.finger_70070_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_inviterId_30778_3h",
+      "variable_name": "近3小时同GPS同邀请人注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近3小时同GPS同邀请人注册用户数",
+      "source_path": "e.gps_inviterId_30778_3h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70022_1440m",
+      "variable_name": "同设备24h注册用户集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "同设备24h注册用户集合",
+      "source_path": "e.finger_70022_1440m",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_gps_70108_60m",
+      "variable_name": "新设备-gps1h注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-gps1h注册量_保留1",
+      "source_path": "e.finger_gps_70108_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isXposedExistHit",
+      "variable_name": "isXposedExistHit",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "isXposedExistHit",
+      "source_path": "e.isXposedExistHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "minuteDeviceUseNumberHit",
+      "variable_name": "命中60分钟同设备注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中60分钟同设备注册次数超限",
+      "source_path": "e.minuteDeviceUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "reasons",
+      "variable_name": "原因码",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "原因码",
+      "source_path": "e.reasons",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70017_60m",
+      "variable_name": "设备近1h注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "设备近1h注册次数",
+      "source_path": "e.finger_70017_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hourPwdUseNumberHit",
+      "variable_name": "命中24小时同密码注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中24小时同密码注册次数超限",
+      "source_path": "e.hourPwdUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps7DayHit",
+      "variable_name": "命中7天gps注册测试超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中7天gps注册测试超限",
+      "source_path": "e.gps7DayHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hourDeviceUseNumberHit",
+      "variable_name": "命中24小时同设备注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中24小时同设备注册次数超限",
+      "source_path": "e.hourDeviceUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_canvas_30790_3h",
+      "variable_name": "近3小时同GPS同canvas注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近3小时同GPS同canvas注册用户数",
+      "source_path": "e.gps_canvas_30790_3h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "register_email_suffix",
+      "variable_name": "注册邮箱后缀",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "注册邮箱后缀",
+      "source_path": "e.register_email_suffix",
+      "default_value": "gmail.com",
+      "examples": [
+        "gmail.com"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "m_freqLimit_flag",
+      "variable_name": "超频标识",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "超频标识",
+      "source_path": "e.m_freqLimit_flag",
+      "default_value": 0,
+      "examples": [
+        0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hitRegisterDeviceBlackList",
+      "variable_name": "是否命中注册设备黑名单",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否命中注册设备黑名单",
+      "source_path": "e.hitRegisterDeviceBlackList",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "minutePwdUseNumberHit",
+      "variable_name": "命中60分钟同密码注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中60分钟同密码注册次数超限",
+      "source_path": "e.minutePwdUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "poc_fingerID",
+      "variable_name": "新设备指纹",
+      "scope": "derived",
+      "data_type": "other",
+      "description": "新设备指纹",
+      "source_path": "e.poc_fingerID",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ephone_70333",
+      "variable_name": "手机号对应运营商",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "手机号对应运营商",
+      "source_path": "e.ephone_70333",
+      "default_value": "Viettel",
+      "examples": [
+        "Viettel"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70069_60m",
+      "variable_name": "新设备-同设备1h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-同设备1h注册量",
+      "source_path": "e.finger_70069_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70095_1440m",
+      "variable_name": "新设备-同设备24h注册用户集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "新设备-同设备24h注册用户集合",
+      "source_path": "e.finger_70095_1440m",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "Reg_phone_country",
+      "variable_name": "注册手机号归属国家(私有）",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "注册手机号归属国家(私有）",
+      "source_path": "e.Reg_phone_country",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_50933_1440m",
+      "variable_name": "相同设备24h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同设备24h注册量",
+      "source_path": "e.finger_50933_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70434_1d",
+      "variable_name": "IP国家近7天KYC不一致注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近7天KYC不一致注册数",
+      "source_path": "e.country_70434_1d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "emailSuffixAes",
+      "variable_name": "邮箱域名(aes密文)",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "邮箱域名(aes密文)",
+      "source_path": "e.emailSuffixAes",
+      "default_value": "9FlZCr/O5zy2/Wgf8U1+XQ==",
+      "examples": [
+        "9FlZCr/O5zy2/Wgf8U1+XQ=="
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "fingerNotExistHit",
+      "variable_name": "命中指纹不存在",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中指纹不存在",
+      "source_path": "e.fingerNotExistHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerId_CountryCity_regUser_cnt_6mth",
+      "variable_name": "6个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "6个月内当前fingerI当前IP对应的国家城市上注册的去重用户数量",
+      "source_path": "e.c_fingerId_CountryCity_regUser_cnt_6mth",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_gps_70108_1440m",
+      "variable_name": "新设备-gps24h注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-gps24h注册量_保留1",
+      "source_path": "e.finger_gps_70108_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone7DayHit",
+      "variable_name": "命中7d手机注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中7d手机注册次数超限",
+      "source_path": "e.phone7DayHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpCountryEmailHit",
+      "variable_name": "命中IP国家小众邮箱策略",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中IP国家小众邮箱策略",
+      "source_path": "e.IpCountryEmailHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70440_60m",
+      "variable_name": "IP国家近1小时设备指纹为空注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近1小时设备指纹为空注册数",
+      "source_path": "e.country_70440_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpCountryFingerAbnormal1HourHit",
+      "variable_name": "命中IP国家近1小时设备指纹异常",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中IP国家近1小时设备指纹异常",
+      "source_path": "e.IpCountryFingerAbnormal1HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "cheating_email_suffix",
+      "variable_name": "疑似作弊邮箱域名",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "疑似作弊邮箱域名",
+      "source_path": "e.cheating_email_suffix",
+      "default_value": [
+        "dget.us"
+      ],
+      "examples": [
+        [
+          "dget.us"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "doesItStartWithZeroHit",
+      "variable_name": "命中0开头手机号",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中0开头手机号",
+      "source_path": "e.doesItStartWithZeroHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "RegEmailPrefixLenWithDigits",
+      "variable_name": "注册邮箱前缀长度_不忽略数字",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "注册邮箱前缀长度_不忽略数字",
+      "source_path": "e.RegEmailPrefixLenWithDigits",
+      "default_value": 18,
+      "examples": [
+        18
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "aesEmailPrefix",
+      "variable_name": "AES邮箱前缀加密",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "AES邮箱前缀加密",
+      "source_path": "e.aesEmailPrefix",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "black_carrier_list",
+      "variable_name": "黑运营商列表",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "黑运营商列表",
+      "source_path": "e.black_carrier_list",
+      "default_value": [
+        "Movilnet",
+        "Intertelecom",
+        "Telesystems of Ukraine",
+        "TriMob",
+        "Silknet",
+        "PT XL Axiata Tbk",
+        "Alfa Telecom",
+        "Orange Guinee",
+        "SEATEL",
+        "Dialog",
+        "Sure (Jersey) Limited",
+        "Sure (Guernsey) Limited",
+        "SEATEL",
+        "Banglalink Digital Communications Ltd.",
+        "MobiCom",
+        "Tcell",
+        "Ufone",
+        "Core Telecom Limited",
+        "Maxis Mobile Services Sdn Bhd",
+        "Nationwide Telephone Assistance Ltd",
+        "Ziron (UK) Ltd",
+        "08Direct Limited",
+        "Gamma Telecom Holdings Ltd",
+        "Tacom",
+        "O-Mobile",
+        "Telekom Networks Malawi",
+        "Pakistan Mobile Communications Limited (PMCL)",
+        "Citrus Telecommunications Ltd",
+        "Babilon-Mobile",
+        "Al Madar",
+        "Hanoi Telecom",
+        "Orange Moldova",
+        "Celcom Axiata Berhad",
+        "Orange Romania",
+        "Moldcell",
+        "MLT",
+        "T-HT",
+        "Orange Guinee",
+        "Wana",
+        "NurTelecom",
+        "MTN Nigeria",
+        "MTN Yemen",
+        "Yemen Mobile",
+        "Sabafon",
+        "Orange Tunisie",
+        "Sentel",
+        "AT",
+        "Celtel",
+        "Airtel",
+        "Zamtel"
+      ],
+      "examples": [
+        [
+          "Movilnet",
+          "Intertelecom",
+          "Telesystems of Ukraine",
+          "TriMob",
+          "Silknet",
+          "PT XL Axiata Tbk",
+          "Alfa Telecom",
+          "Orange Guinee",
+          "SEATEL",
+          "Dialog",
+          "Sure (Jersey) Limited",
+          "Sure (Guernsey) Limited",
+          "SEATEL",
+          "Banglalink Digital Communications Ltd.",
+          "MobiCom",
+          "Tcell",
+          "Ufone",
+          "Core Telecom Limited",
+          "Maxis Mobile Services Sdn Bhd",
+          "Nationwide Telephone Assistance Ltd",
+          "Ziron (UK) Ltd",
+          "08Direct Limited",
+          "Gamma Telecom Holdings Ltd",
+          "Tacom",
+          "O-Mobile",
+          "Telekom Networks Malawi",
+          "Pakistan Mobile Communications Limited (PMCL)",
+          "Citrus Telecommunications Ltd",
+          "Babilon-Mobile",
+          "Al Madar",
+          "Hanoi Telecom",
+          "Orange Moldova",
+          "Celcom Axiata Berhad",
+          "Orange Romania",
+          "Moldcell",
+          "MLT",
+          "T-HT",
+          "Orange Guinee",
+          "Wana",
+          "NurTelecom",
+          "MTN Nigeria",
+          "MTN Yemen",
+          "Yemen Mobile",
+          "Sabafon",
+          "Orange Tunisie",
+          "Sentel",
+          "AT",
+          "Celtel",
+          "Airtel",
+          "Zamtel"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_country_platform_70370_60m",
+      "variable_name": "IP国家平台密码近1小时注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家平台密码近1小时注册数",
+      "source_path": "e.pwd_country_platform_70370_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isRegisterMailException",
+      "variable_name": "异常邮箱",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "异常邮箱",
+      "source_path": "e.isRegisterMailException",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "bulk_reg_detect_model_request",
+      "variable_name": "批量注册识别模型请求参数",
+      "scope": "derived",
+      "data_type": "map",
+      "description": "批量注册识别模型请求参数",
+      "source_path": "e.bulk_reg_detect_model_request",
+      "default_value": {
+        "x1": 1,
+        "x2": 0,
+        "x3": 0,
+        "x4": 0.0,
+        "x5": 0.0,
+        "x6": 0.0,
+        "x7": 0.0,
+        "x8": 0,
+        "x9": 103.8367,
+        "x10": 1.3652,
+        "x11": 0.0,
+        "x12": 0.0,
+        "x13": 0.0,
+        "x14": 0.0,
+        "x15": 0.0,
+        "x16": 0.0,
+        "x17": 0.0,
+        "x18": 0.0,
+        "x19": 0.0,
+        "x20": 0.0,
+        "x21": 0.0,
+        "x22": 10,
+        "x23": 3.5032583359332046,
+        "x24": 15.08911696351261,
+        "x25": 18,
+        "x26": 18,
+        "x27": 0.0,
+        "x28": 0.0,
+        "x29": 0.0,
+        "x30": 0.0,
+        "x31": 0.0,
+        "x32": 0.0,
+        "x33": 0.0
+      },
+      "examples": [
+        {
+          "x1": 1,
+          "x2": 0,
+          "x3": 0,
+          "x4": 0.0,
+          "x5": 0.0,
+          "x6": 0.0,
+          "x7": 0.0,
+          "x8": 0,
+          "x9": 103.8367,
+          "x10": 1.3652,
+          "x11": 0.0,
+          "x12": 0.0,
+          "x13": 0.0,
+          "x14": 0.0,
+          "x15": 0.0,
+          "x16": 0.0,
+          "x17": 0.0,
+          "x18": 0.0,
+          "x19": 0.0,
+          "x20": 0.0,
+          "x21": 0.0,
+          "x22": 10,
+          "x23": 3.5032583359332046,
+          "x24": 15.08911696351261,
+          "x25": 18,
+          "x26": 18,
+          "x27": 0.0,
+          "x28": 0.0,
+          "x29": 0.0,
+          "x30": 0.0,
+          "x31": 0.0,
+          "x32": 0.0,
+          "x33": 0.0
+        }
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_70443_168h",
+      "variable_name": "同密码且使用小众邮箱近7天注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同密码且使用小众邮箱近7天注册数",
+      "source_path": "e.pwd_70443_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_similarEmailSite_regUserCnt_30day",
+      "variable_name": "相似邮箱在当前站点注册量 - 30天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱在当前站点注册量 - 30天",
+      "source_path": "e.c_similarEmailSite_regUserCnt_30day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "CarrierBlackListHit",
+      "variable_name": "命中运营商黑名单",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中运营商黑名单",
+      "source_path": "e.CarrierBlackListHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "woolConutrys",
+      "variable_name": "常量-羊毛国家码",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "常量-羊毛国家码",
+      "source_path": "e.woolConutrys",
+      "default_value": [
+        "IN",
+        "BD",
+        "VN",
+        "PK",
+        "NG",
+        "PH",
+        "ID",
+        "KE",
+        "RU",
+        "UA"
+      ],
+      "examples": [
+        [
+          "IN",
+          "BD",
+          "VN",
+          "PK",
+          "NG",
+          "PH",
+          "ID",
+          "KE",
+          "RU",
+          "UA"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayDeviceUseNumberOf30Hit",
+      "variable_name": "命中30天同设备注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中30天同设备注册次数超限",
+      "source_path": "e.dayDeviceUseNumberOf30Hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwdBlackList",
+      "variable_name": "添加同密码注册黑名单",
+      "scope": "derived",
+      "data_type": "other",
+      "description": "添加同密码注册黑名单",
+      "source_path": "e.pwdBlackList",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpWhite",
+      "variable_name": "IP白名单",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "IP白名单",
+      "source_path": "e.IpWhite",
+      "default_value": [
+        "134.238.21.54",
+        "128.1.156.34",
+        "103.193.127.14"
+      ],
+      "examples": [
+        [
+          "134.238.21.54",
+          "128.1.156.34",
+          "103.193.127.14"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "sameEmailPrefix",
+      "variable_name": "命中与邀请人同邮箱前缀",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中与邀请人同邮箱前缀",
+      "source_path": "e.sameEmailPrefix",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_country_70105_180d",
+      "variable_name": "新设备-6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "source_path": "e.finger_country_70105_180d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayPwdUseNumberOf30Hit",
+      "variable_name": "命中30天同密码注册次数超限",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "命中30天同密码注册次数超限",
+      "source_path": "e.dayPwdUseNumberOf30Hit",
+      "default_value": true,
+      "examples": [
+        true
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70023_168h",
+      "variable_name": "同设备7d用户集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "同设备7d用户集合",
+      "source_path": "e.finger_70023_168h",
+      "default_value": [
+        "699c868d34a56e0001c197bf"
+      ],
+      "examples": [
+        [
+          "699c868d34a56e0001c197bf"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_similarEmailSite_regUserCnt_7day",
+      "variable_name": "相似邮箱在当前站点注册量 - 7天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱在当前站点注册量 - 7天",
+      "source_path": "e.c_similarEmailSite_regUserCnt_7day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipCountry_audio_battery_brightness_220321_10min",
+      "variable_name": "过去10min同IP国家同音量同电量同屏幕亮度注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "过去10min同IP国家同音量同电量同屏幕亮度注册次数",
+      "source_path": "e.ipCountry_audio_battery_brightness_220321_10min",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "emailPrefixAes_ip_1102_60m",
+      "variable_name": "同ip相同邮箱前缀注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同ip相同邮箱前缀注册次数",
+      "source_path": "e.emailPrefixAes_ip_1102_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_50935_60m",
+      "variable_name": "同密码1h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同密码1h注册量",
+      "source_path": "e.pwd_50935_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hourEmailUseNumber",
+      "variable_name": "邮箱前缀24h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "邮箱前缀24h注册量",
+      "source_path": "e.hourEmailUseNumber",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70435_1d",
+      "variable_name": "IP国家近30天KYC不一致注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近30天KYC不一致注册数",
+      "source_path": "e.country_70435_1d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipRateLimitSum",
+      "variable_name": "ip限流特征加工依赖因子",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "ip限流特征加工依赖因子",
+      "source_path": "e.ipRateLimitSum",
+      "default_value": 1,
+      "examples": [
+        1
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70442_60m",
+      "variable_name": "IP国家近1小时设备指纹异常注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近1小时设备指纹异常注册数",
+      "source_path": "e.country_70442_60m",
+      "default_value": 1.0,
+      "examples": [
+        1.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayEmailUseNumberOf30",
+      "variable_name": "邮箱前缀30d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "邮箱前缀30d注册量",
+      "source_path": "e.dayEmailUseNumberOf30",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "longitude",
+      "variable_name": "经度",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "经度",
+      "source_path": "e.longitude",
+      "default_value": 103.8367,
+      "examples": [
+        103.8367
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "domain_emailPrefix_50968_168h",
+      "variable_name": "相似邮箱7d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱7d注册量",
+      "source_path": "e.domain_emailPrefix_50968_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "site_finger_domain_country_70213_60m",
+      "variable_name": "新设备-相同设备&邮箱后缀&国家码&站点的注册量 - 1h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-相同设备&邮箱后缀&国家码&站点的注册量 - 1h",
+      "source_path": "e.site_finger_domain_country_70213_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayEmailUseNumberOf7",
+      "variable_name": "邮箱前缀7d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "邮箱前缀7d注册量",
+      "source_path": "e.dayEmailUseNumberOf7",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "TestVar1",
+      "variable_name": "测试变量1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "测试变量1",
+      "source_path": "e.TestVar1",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "pwd_50935_1440m",
+      "variable_name": "同密码24h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同密码24h注册量",
+      "source_path": "e.pwd_50935_1440m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "minuteEmailUseNumber",
+      "variable_name": "邮箱前缀1h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "邮箱前缀1h注册量",
+      "source_path": "e.minuteEmailUseNumber",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70439_24h",
+      "variable_name": "IP国家近24小时设备指纹为空注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近24小时设备指纹为空注册数",
+      "source_path": "e.country_70439_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpCountryFingerAbnormal24HourHit",
+      "variable_name": "命中IP国家近24小时设备指纹异常",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中IP国家近24小时设备指纹异常",
+      "source_path": "e.IpCountryFingerAbnormal24HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipCountryCity",
+      "variable_name": "ip对应国家城市",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "ip对应国家城市",
+      "source_path": "e.ipCountryCity",
+      "default_value": "Singapore-Singapore",
+      "examples": [
+        "Singapore-Singapore"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "reg_phone_aes",
+      "variable_name": "注册手机号AES",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "注册手机号AES",
+      "source_path": "e.reg_phone_aes",
+      "default_value": "hi0ZVz9gNhnQw5hHrKEreg==",
+      "examples": [
+        "hi0ZVz9gNhnQw5hHrKEreg=="
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "riskCountry",
+      "variable_name": "高风险国家",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "高风险国家",
+      "source_path": "e.riskCountry",
+      "default_value": [
+        "IN",
+        "BD",
+        "UA",
+        "NG",
+        "VN",
+        "PK",
+        "RU",
+        "ID",
+        "PH",
+        "TUR",
+        "KE"
+      ],
+      "examples": [
+        [
+          "IN",
+          "BD",
+          "UA",
+          "NG",
+          "VN",
+          "PK",
+          "RU",
+          "ID",
+          "PH",
+          "TUR",
+          "KE"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hit_app_black_reasonDesc",
+      "variable_name": "设备黑名单原因描述",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "设备黑名单原因描述",
+      "source_path": "e.hit_app_black_reasonDesc",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70095_60m",
+      "variable_name": "新设备-同设备1h注册集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "新设备-同设备1h注册集合",
+      "source_path": "e.finger_70095_60m",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "latitude",
+      "variable_name": "纬度",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "纬度",
+      "source_path": "e.latitude",
+      "default_value": 1.3652,
+      "examples": [
+        1.3652
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "deviceModel_request",
+      "variable_name": "设备价值模型请求参数",
+      "scope": "derived",
+      "data_type": "map",
+      "description": "设备价值模型请求参数",
+      "source_path": "e.deviceModel_request",
+      "default_value": {
+        "sim_ctry_iso__net_income_90d_avg": 57.36428700949927,
+        "sim_ctry_iso__value_tag6_rate": 0.4856060606060606,
+        "device_model__value_tag6_rate": 0.2964637477238868,
+        "sim_ctry_iso__value_tag4_rate": 0.25681818181818183,
+        "device_model__value_tag4_rate": 0.3963333885118358,
+        "sim_ctry_iso__value_tag1_rate": 0,
+        "sim_ctry_iso__value_tag3_rate": 0,
+        "device_model__net_income_90d_avg": 55.41090661963028,
+        "device_model__value_tag1_rate": 0.01482060089389174,
+        "sim_ctry_iso__value_tag2_rate": 0.019696969696969695,
+        "sim_ctry_iso__freq": 0.002276113226287039,
+        "device_model__value_tag5_rate": 0.27238867737129613,
+        "os_version__freq": 0.16109018926226343,
+        "sim_ctry_iso__value_tag5_rate": 0.23787878787878788,
+        "device_brand__freq": 0.029479114936820615,
+        "device_model__freq": 1.0,
+        "device_brand__value_tag1_rate": 0.043518951801591016,
+        "device_brand__value_tag4_rate": 0.5136289190453908,
+        "device_brand__value_tag5_rate": 0.30334581188582127,
+        "device_model__value_tag2_rate": 0.01514477459581747,
+        "os_name__freq": 0.5704750179330133
+      },
+      "examples": [
+        {
+          "sim_ctry_iso__net_income_90d_avg": 57.36428700949927,
+          "sim_ctry_iso__value_tag6_rate": 0.4856060606060606,
+          "device_model__value_tag6_rate": 0.2964637477238868,
+          "sim_ctry_iso__value_tag4_rate": 0.25681818181818183,
+          "device_model__value_tag4_rate": 0.3963333885118358,
+          "sim_ctry_iso__value_tag1_rate": 0,
+          "sim_ctry_iso__value_tag3_rate": 0,
+          "device_model__net_income_90d_avg": 55.41090661963028,
+          "device_model__value_tag1_rate": 0.01482060089389174,
+          "sim_ctry_iso__value_tag2_rate": 0.019696969696969695,
+          "sim_ctry_iso__freq": 0.002276113226287039,
+          "device_model__value_tag5_rate": 0.27238867737129613,
+          "os_version__freq": 0.16109018926226343,
+          "sim_ctry_iso__value_tag5_rate": 0.23787878787878788,
+          "device_brand__freq": 0.029479114936820615,
+          "device_model__freq": 1.0,
+          "device_brand__value_tag1_rate": 0.043518951801591016,
+          "device_brand__value_tag4_rate": 0.5136289190453908,
+          "device_brand__value_tag5_rate": 0.30334581188582127,
+          "device_model__value_tag2_rate": 0.01514477459581747,
+          "os_name__freq": 0.5704750179330133
+        }
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerId_Country_regUser_cnt_1mth",
+      "variable_name": "1个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "1个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "source_path": "e.c_fingerId_Country_regUser_cnt_1mth",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hourEmailUseNumberHit",
+      "variable_name": "命中24h同邮箱前缀注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中24h同邮箱前缀注册次数超限",
+      "source_path": "e.hourEmailUseNumberHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_deviceFuzzyId_30784_24h",
+      "variable_name": "近24小时同GPS同设备模糊ID注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近24小时同GPS同设备模糊ID注册用户数",
+      "source_path": "e.gps_deviceFuzzyId_30784_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "email_prefix_randomness_score",
+      "variable_name": "注册邮箱前缀随机分",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "注册邮箱前缀随机分",
+      "source_path": "e.email_prefix_randomness_score",
+      "default_value": 15.08911696351261,
+      "examples": [
+        15.08911696351261
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone24HourHit",
+      "variable_name": "命中24h手机注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中24h手机注册次数超限",
+      "source_path": "e.phone24HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70022_60m",
+      "variable_name": "同设备1h注册集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "同设备1h注册集合",
+      "source_path": "e.finger_70022_60m",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_1",
+      "variable_name": "gps(保留1位)",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "gps(保留1位)",
+      "source_path": "e.gps_1",
+      "default_value": "103.8&1.3",
+      "examples": [
+        "103.8&1.3"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "inviterDeviceId",
+      "variable_name": "老：邀请人最近1次登录设备",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "老：邀请人最近1次登录设备",
+      "source_path": "e.inviterDeviceId",
+      "default_value": "iPhone 16 Pro Max",
+      "examples": [
+        "iPhone 16 Pro Max"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipCountry_audio_battery_brightness_220321_60min",
+      "variable_name": "过去1h时间同IP国家同音量同电量同屏幕亮度注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "过去1h时间同IP国家同音量同电量同屏幕亮度注册次数",
+      "source_path": "e.ipCountry_audio_battery_brightness_220321_60min",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerEmailSuffixCountrySite_regCnt_30day",
+      "variable_name": "相同设备&邮箱后缀&国家码&站点的注册量 - 30天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同设备&邮箱后缀&国家码&站点的注册量 - 30天",
+      "source_path": "e.c_fingerEmailSuffixCountrySite_regCnt_30day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_phoneSite_regUser_7day",
+      "variable_name": "同站点相同手机前缀注册用户数-7天",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同站点相同手机前缀注册用户数-7天",
+      "source_path": "e.c_phoneSite_regUser_7day",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerSiteEmailPrefix_regCnt_60m",
+      "variable_name": "同设备同站点相同邮箱前缀注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同设备同站点相同邮箱前缀注册次数",
+      "source_path": "e.c_fingerSiteEmailPrefix_regCnt_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_deviceFuzzyId_30784_3h",
+      "variable_name": "近3小时同GPS同设备模糊ID注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近3小时同GPS同设备模糊ID注册用户数",
+      "source_path": "e.gps_deviceFuzzyId_30784_3h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70096_720h",
+      "variable_name": "新设备-同设备30d用户集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "新设备-同设备30d用户集合",
+      "source_path": "e.finger_70096_720h",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_50932_168h",
+      "variable_name": "同IP7d注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同IP7d注册量",
+      "source_path": "e.ip_50932_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70436_1d",
+      "variable_name": "IP国家近1天完成KYC3注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近1天完成KYC3注册数",
+      "source_path": "e.country_70436_1d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_gps_70109_168h",
+      "variable_name": "新设备-gps7d注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-gps7d注册量_保留1",
+      "source_path": "e.finger_gps_70109_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayIpUseNumberOf30Hit",
+      "variable_name": "命中30天同ip注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中30天同ip注册次数超限",
+      "source_path": "e.dayIpUseNumberOf30Hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayEmailUseNumberOf30Hit",
+      "variable_name": "命中30d同邮箱前缀注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中30d同邮箱前缀注册次数超限",
+      "source_path": "e.dayEmailUseNumberOf30Hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isEmulatorHit",
+      "variable_name": "命中设备属于模拟器",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中设备属于模拟器",
+      "source_path": "e.isEmulatorHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "user_1098_register",
+      "variable_name": "邀请人设备指纹",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "邀请人设备指纹",
+      "source_path": "e.user_1098_register",
+      "default_value": "689e485393c899f1db78190a2987db40",
+      "examples": [
+        "689e485393c899f1db78190a2987db40"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "sameDevice",
+      "variable_name": "命中与邀请人同设备",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中与邀请人同设备",
+      "source_path": "e.sameDevice",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "isHookHit",
+      "variable_name": "isHookHit",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "isHookHit",
+      "source_path": "e.isHookHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "dayPwdUseNumberOf7Hit",
+      "variable_name": "命中7天同密码注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中7天同密码注册次数超限",
+      "source_path": "e.dayPwdUseNumberOf7Hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "fingerIdRateLimitSum",
+      "variable_name": "指纹限流特征加工依赖因子",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "指纹限流特征加工依赖因子",
+      "source_path": "e.fingerIdRateLimitSum",
+      "default_value": 1,
+      "examples": [
+        1
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70090",
+      "variable_name": "新设备-设备限频结束时间点",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-设备限频结束时间点",
+      "source_path": "e.finger_70090",
+      "default_value": null,
+      "examples": [],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_70096_168h",
+      "variable_name": "新设备-同设备7d用户集合",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "新设备-同设备7d用户集合",
+      "source_path": "e.finger_70096_168h",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "email_50967_1h",
+      "variable_name": "相似邮箱1h注册量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱1h注册量",
+      "source_path": "e.email_50967_1h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_50934_168h",
+      "variable_name": "同设备7d注册量\t",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同设备7d注册量\t",
+      "source_path": "e.finger_50934_168h",
+      "default_value": 1.0,
+      "examples": [
+        1.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps1_50976_24h",
+      "variable_name": "gps24h注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "gps24h注册量_保留1",
+      "source_path": "e.gps1_50976_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps1HourHit",
+      "variable_name": "命中60分钟gps注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中60分钟gps注册次数超限",
+      "source_path": "e.gps1HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70441_24h",
+      "variable_name": "IP国家近24小时设备指纹异常注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近24小时设备指纹异常注册数",
+      "source_path": "e.country_70441_24h",
+      "default_value": 7.0,
+      "examples": [
+        7.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "sameIPMailboxSmall",
+      "variable_name": "命中相同IP邮箱小号",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中相同IP邮箱小号",
+      "source_path": "e.sameIPMailboxSmall",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_80015_60m",
+      "variable_name": "ip近1小时注册次数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "ip近1小时注册次数",
+      "source_path": "e.ip_80015_60m",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerEmailSuffixCountrySite_regCnt_1h",
+      "variable_name": "相同设备&邮箱后缀&国家码&站点的注册量 - 1h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同设备&邮箱后缀&国家码&站点的注册量 - 1h",
+      "source_path": "e.c_fingerEmailSuffixCountrySite_regCnt_1h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "deviceModel_response",
+      "variable_name": "设备价值模型返回值",
+      "scope": "derived",
+      "data_type": "other",
+      "description": "设备价值模型返回值",
+      "source_path": "e.deviceModel_response",
+      "default_value": {
+        "code": "200",
+        "data": "96.2",
+        "success": true,
+        "extra": {},
+        "message": "操作成功."
+      },
+      "examples": [
+        {
+          "code": "200",
+          "data": "96.2",
+          "success": true,
+          "extra": {},
+          "message": "操作成功."
+        }
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_inviterId_30778_24h",
+      "variable_name": "近24小时同GPS同邀请人注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近24小时同GPS同邀请人注册用户数",
+      "source_path": "e.gps_inviterId_30778_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "deviceModel_score",
+      "variable_name": "设备价值模型分数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "设备价值模型分数",
+      "source_path": "e.deviceModel_score",
+      "default_value": 96.2,
+      "examples": [
+        96.2
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "finger_country_70105_30d",
+      "variable_name": "新设备-1个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "新设备-1个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "source_path": "e.finger_country_70105_30d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "appid_list",
+      "variable_name": "appid集合",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "appid集合",
+      "source_path": "e.appid_list",
+      "default_value": [
+        "com.kubi.kucoin",
+        "com.kubi.kucoin.debug",
+        "com.kubi.turkey.debug",
+        "com.kubi.turkey",
+        "com.kubi.thailand.debug",
+        "com.kubi.thailand",
+        "com.kubi.thailand.App",
+        "com.kubi.thailand.iOS"
+      ],
+      "examples": [
+        [
+          "com.kubi.kucoin",
+          "com.kubi.kucoin.debug",
+          "com.kubi.turkey.debug",
+          "com.kubi.turkey",
+          "com.kubi.thailand.debug",
+          "com.kubi.thailand",
+          "com.kubi.thailand.App",
+          "com.kubi.thailand.iOS"
+        ]
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpCountryFingerAbnormal7DayHit",
+      "variable_name": "命中IP国家近7天设备指纹异常",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中IP国家近7天设备指纹异常",
+      "source_path": "e.IpCountryFingerAbnormal7DayHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "SmsIpCountryConflictHit",
+      "variable_name": "命中短信号码国家和IP冲突",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中短信号码国家和IP冲突",
+      "source_path": "e.SmsIpCountryConflictHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps_canvas_30790_24h",
+      "variable_name": "近24小时同GPS同canvas注册用户数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "近24小时同GPS同canvas注册用户数",
+      "source_path": "e.gps_canvas_30790_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ip_black_new_hit",
+      "variable_name": "是否命中ip新黑名单",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否命中ip新黑名单",
+      "source_path": "e.ip_black_new_hit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "email_30883_5d",
+      "variable_name": "邮箱关联注销用户列表",
+      "scope": "derived",
+      "data_type": "list",
+      "description": "邮箱关联注销用户列表",
+      "source_path": "e.email_30883_5d",
+      "default_value": [],
+      "examples": [
+        []
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_fingerId_Country_regUser_cnt_6mth",
+      "variable_name": "6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "6个月内当前fingerId当前IP对应的国家上注册的去重用户数量",
+      "source_path": "e.c_fingerId_Country_regUser_cnt_6mth",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone_50956_168h",
+      "variable_name": "相同手机前缀7d注册数量",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相同手机前缀7d注册数量",
+      "source_path": "e.phone_50956_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_similarEmailSite_regUserCnt_24h",
+      "variable_name": "相似邮箱在当前站点注册量 - 24小时",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "相似邮箱在当前站点注册量 - 24小时",
+      "source_path": "e.c_similarEmailSite_regUserCnt_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps1_50977_7d",
+      "variable_name": "gps7d注册量_保留1",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "gps7d注册量_保留1",
+      "source_path": "e.gps1_50977_7d",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "c_emailPrefixSite_regUserCnt_24h",
+      "variable_name": "同邮箱前缀同站点注册量 - 24h",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "同邮箱前缀同站点注册量 - 24h",
+      "source_path": "e.c_emailPrefixSite_regUserCnt_24h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "country_70439_168h",
+      "variable_name": "IP国家近7天设备指纹为空注册数",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP国家近7天设备指纹为空注册数",
+      "source_path": "e.country_70439_168h",
+      "default_value": 0.0,
+      "examples": [
+        0.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "hit_app_black_flag",
+      "variable_name": "是否命中设备黑名单规则",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "是否命中设备黑名单规则",
+      "source_path": "e.hit_app_black_flag",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "IpCountryFingerEmpty24HourHit",
+      "variable_name": "命中IP国家近24小时设备指纹为空",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中IP国家近24小时设备指纹为空",
+      "source_path": "e.IpCountryFingerEmpty24HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "deviceModel_url",
+      "variable_name": "设备价值模型接口url",
+      "scope": "derived",
+      "data_type": "string",
+      "description": "设备价值模型接口url",
+      "source_path": "e.deviceModel_url",
+      "default_value": "https://dc-ms.kcprd.com/dc-ms-shumei-device/predict",
+      "examples": [
+        "https://dc-ms.kcprd.com/dc-ms-shumei-device/predict"
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "gps2_50940_7d",
+      "variable_name": "gps7d注册量_保留2",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "gps7d注册量_保留2",
+      "source_path": "e.gps2_50940_7d",
+      "default_value": 2.0,
+      "examples": [
+        2.0
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "phone1HourHit",
+      "variable_name": "命中60分钟手机注册次数超限",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中60分钟手机注册次数超限",
+      "source_path": "e.phone1HourHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "EmailSamePwdHit",
+      "variable_name": "命中小众邮箱同密码",
+      "scope": "derived",
+      "data_type": "bool",
+      "description": "命中小众邮箱同密码",
+      "source_path": "e.EmailSamePwdHit",
+      "default_value": false,
+      "examples": [
+        false
+      ],
+      "searchable": true,
+      "metadata": {}
+    },
+    {
+      "variable_key": "ipCountry",
+      "variable_name": "IP对应国家",
+      "scope": "derived",
+      "data_type": "double",
+      "description": "IP对应国家",
+      "source_path": "e.ipCountry",
+      "default_value": "Singapore",
+      "examples": [
+        "Singapore"
+      ],
+      "searchable": true,
+      "metadata": {}
+    }
+  ]
+}

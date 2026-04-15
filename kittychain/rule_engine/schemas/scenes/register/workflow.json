@@ -1,0 +1,464 @@
+{
+  "scene_key": "register",
+  "workflow_id": "workflow_register_main",
+  "workflow_name": "用户注册",
+  "entry_node_ids": [
+    "node_7e0c27f3"
+  ],
+  "nodes": [
+    {
+      "node_id": "node_076348d0",
+      "node_type": "rule",
+      "label": "设备限流",
+      "enabled": true,
+      "position": {
+        "x": 875.75,
+        "y": 35.0
+      }
+    },
+    {
+      "node_id": "node_1aad07ed",
+      "node_type": "rule",
+      "label": "注销用户重复注册",
+      "enabled": true,
+      "position": {
+        "x": 872.625,
+        "y": 122.0
+      }
+    },
+    {
+      "node_id": "node_c7cc7988",
+      "node_type": "rule",
+      "label": "黑名单规则节点",
+      "enabled": true,
+      "position": {
+        "x": 996.75,
+        "y": 52.0
+      }
+    },
+    {
+      "node_id": "node_53329224",
+      "node_type": "rule",
+      "label": "三方注册限制",
+      "enabled": true,
+      "position": {
+        "x": 734.5,
+        "y": 66.0
+      }
+    },
+    {
+      "node_id": "node_32eb04d5",
+      "node_type": "rule",
+      "label": "特征因子观察节点",
+      "enabled": true,
+      "position": {
+        "x": 599.75,
+        "y": 66.5
+      }
+    },
+    {
+      "node_id": "node_7e0c27f3",
+      "node_type": "init",
+      "label": "开始",
+      "enabled": true,
+      "position": {
+        "x": 599.25,
+        "y": -43.99999999999994
+      }
+    },
+    {
+      "node_id": "node_CqtnwPjpKjnLKkATm",
+      "node_type": "rule",
+      "label": "GPS规则节点",
+      "enabled": true,
+      "position": {
+        "x": 1240.5,
+        "y": -155.7499999999999
+      }
+    },
+    {
+      "node_id": "node_881bf271",
+      "node_type": "rule",
+      "label": "邮箱规则节点",
+      "enabled": true,
+      "position": {
+        "x": 1241.0,
+        "y": -84.49999999999994
+      }
+    },
+    {
+      "node_id": "node_bd90178e",
+      "node_type": "rule",
+      "label": "手机规则节点",
+      "enabled": true,
+      "position": {
+        "x": 1241.5,
+        "y": -8.5
+      }
+    },
+    {
+      "node_id": "node_8aaafdfd",
+      "node_type": "rule",
+      "label": "密码规则节点",
+      "enabled": true,
+      "position": {
+        "x": 1242.0,
+        "y": 72.5
+      }
+    },
+    {
+      "node_id": "node_ee8c093f",
+      "node_type": "rule",
+      "label": "ip规则节点",
+      "enabled": true,
+      "position": {
+        "x": 1242.5,
+        "y": 146.5
+      }
+    },
+    {
+      "node_id": "node_914bf853",
+      "node_type": "rule",
+      "label": "邀请关系规则节点",
+      "enabled": true,
+      "position": {
+        "x": 1243.0,
+        "y": 219.25000000000006
+      }
+    },
+    {
+      "node_id": "node_8981aa10",
+      "node_type": "condition",
+      "label": "Web注册",
+      "enabled": true,
+      "position": {
+        "x": 1243.75,
+        "y": 290.2500000000001
+      }
+    },
+    {
+      "node_id": "node_1818563f",
+      "node_type": "condition",
+      "label": "APP注册",
+      "enabled": true,
+      "position": {
+        "x": 1243.0,
+        "y": 362.2500000000001
+      }
+    },
+    {
+      "node_id": "node_5e4AxJQj56Bzlgenq",
+      "node_type": "rule",
+      "label": "APP设备规则",
+      "enabled": true,
+      "position": {
+        "x": 1350.75,
+        "y": 362.7500000000001
+      }
+    },
+    {
+      "node_id": "node_1f251c7d",
+      "node_type": "rule",
+      "label": "交叉策略",
+      "enabled": true,
+      "position": {
+        "x": 1248.5,
+        "y": 434.9000000000001
+      }
+    },
+    {
+      "node_id": "node_105e0f1b",
+      "node_type": "rule",
+      "label": "写入标签",
+      "enabled": true,
+      "position": {
+        "x": 1564.5,
+        "y": 60.0
+      }
+    },
+    {
+      "node_id": "node_02860b4d",
+      "node_type": "collect",
+      "label": "结果汇总",
+      "enabled": true,
+      "position": {
+        "x": 1684.0,
+        "y": 59.5
+      }
+    },
+    {
+      "node_id": "node_0ce89b07",
+      "node_type": "rule",
+      "label": "Web设备规则",
+      "enabled": true,
+      "position": {
+        "x": 1351.25,
+        "y": 290.7500000000001
+      }
+    },
+    {
+      "node_id": "node_6fba596e",
+      "node_type": "rule",
+      "label": "ip限流",
+      "enabled": true,
+      "position": {
+        "x": 875.75,
+        "y": -43.99999999999994
+      }
+    },
+    {
+      "node_id": "node_df075d76",
+      "node_type": "rule",
+      "label": "密码限流",
+      "enabled": true,
+      "position": {
+        "x": 873.625,
+        "y": 200.5
+      }
+    },
+    {
+      "node_id": "node_4c08beb6",
+      "node_type": "rule",
+      "label": "模型策略",
+      "enabled": true,
+      "position": {
+        "x": 1248.625,
+        "y": 513.0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge_60b9b258",
+      "source_node_id": "node_53329224",
+      "target_node_id": "node_076348d0",
+      "order": 1,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_d28c2cbf",
+      "source_node_id": "node_53329224",
+      "target_node_id": "node_6fba596e",
+      "order": 2,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_ddd39858",
+      "source_node_id": "node_7e0c27f3",
+      "target_node_id": "node_32eb04d5",
+      "order": 3,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_2113171e",
+      "source_node_id": "node_32eb04d5",
+      "target_node_id": "node_53329224",
+      "order": 4,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_0418d9c7",
+      "source_node_id": "node_076348d0",
+      "target_node_id": "node_c7cc7988",
+      "order": 6,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_d939f12e",
+      "source_node_id": "node_6fba596e",
+      "target_node_id": "node_c7cc7988",
+      "order": 7,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_cc2bc64f",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_CqtnwPjpKjnLKkATm",
+      "order": 8,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_6476bfe8",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_881bf271",
+      "order": 9,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_60c01165",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_bd90178e",
+      "order": 10,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_650c50a5",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_8aaafdfd",
+      "order": 11,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_b321dab4",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_ee8c093f",
+      "order": 12,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_dc6d8eea",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_914bf853",
+      "order": 13,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_9f2ffdee",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_8981aa10",
+      "order": 14,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_344275cf",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_1818563f",
+      "order": 15,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_5c5ca809",
+      "source_node_id": "node_8981aa10",
+      "target_node_id": "node_0ce89b07",
+      "order": 16,
+      "condition_ref": "s.platform in ['KUCOIN_WEB']"
+    },
+    {
+      "edge_id": "edge_bbf78899",
+      "source_node_id": "node_1818563f",
+      "target_node_id": "node_5e4AxJQj56Bzlgenq",
+      "order": 17,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_06a11e30",
+      "source_node_id": "node_CqtnwPjpKjnLKkATm",
+      "target_node_id": "node_105e0f1b",
+      "order": 18,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_7f3fd178",
+      "source_node_id": "node_881bf271",
+      "target_node_id": "node_105e0f1b",
+      "order": 19,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_6f2736d9",
+      "source_node_id": "node_bd90178e",
+      "target_node_id": "node_105e0f1b",
+      "order": 20,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_954a5385",
+      "source_node_id": "node_8aaafdfd",
+      "target_node_id": "node_105e0f1b",
+      "order": 21,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_1af6e012",
+      "source_node_id": "node_ee8c093f",
+      "target_node_id": "node_105e0f1b",
+      "order": 22,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_c32818a9",
+      "source_node_id": "node_914bf853",
+      "target_node_id": "node_105e0f1b",
+      "order": 23,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_11e67632",
+      "source_node_id": "node_0ce89b07",
+      "target_node_id": "node_105e0f1b",
+      "order": 24,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_56b0ee41",
+      "source_node_id": "node_5e4AxJQj56Bzlgenq",
+      "target_node_id": "node_105e0f1b",
+      "order": 25,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_5c4f5ec0",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_1f251c7d",
+      "order": 26,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_1ad7b2b1",
+      "source_node_id": "node_1f251c7d",
+      "target_node_id": "node_105e0f1b",
+      "order": 27,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_db700ac8",
+      "source_node_id": "node_53329224",
+      "target_node_id": "node_1aad07ed",
+      "order": 29,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_c62e056c",
+      "source_node_id": "node_1aad07ed",
+      "target_node_id": "node_c7cc7988",
+      "order": 31,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_f29664b2",
+      "source_node_id": "node_105e0f1b",
+      "target_node_id": "node_02860b4d",
+      "order": 47,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_d7a44a1c",
+      "source_node_id": "node_53329224",
+      "target_node_id": "node_df075d76",
+      "order": 51,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_06494b6f",
+      "source_node_id": "node_df075d76",
+      "target_node_id": "node_c7cc7988",
+      "order": 52,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_bb4fd0e8",
+      "source_node_id": "node_c7cc7988",
+      "target_node_id": "node_4c08beb6",
+      "order": 54,
+      "condition_ref": null
+    },
+    {
+      "edge_id": "edge_9bd7b0c0",
+      "source_node_id": "node_4c08beb6",
+      "target_node_id": "node_105e0f1b",
+      "order": 55,
+      "condition_ref": null
+    }
+  ],
+  "metadata": {}
+}

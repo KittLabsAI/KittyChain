@@ -16,9 +16,15 @@ from .address_pattern import AddressPatternTool
 from .address_transfers import AddressTransfersTool
 from .bash import BashTool
 from .brief import BriefTool
+from .edit import EditTool
 from .glob import GlobTool
 from .grep import GrepTool
 from .read import ReadTool
+from .read_flow import ReadFlowTool
+from .read_hits import ReadHitsTool
+from .read_node import ReadNodeTool
+from .read_rule import ReadRuleTool
+from .strategy_simulation import StrategySimulationTool
 from .social_search import SocialSearchTool
 from .skill import SkillTool
 from .token_holders import TokenHoldersTool
@@ -29,6 +35,7 @@ from .token_security import TokenSecurityTool
 from .todo_write import TodoWriteTool
 from .web_browser import WebBrowserTool
 from .web_search import WebSearchTool
+from .write import WriteTool
 from .write_report import WriteReportTool
 
 _TOOL_TYPES = [
@@ -58,9 +65,53 @@ _TOOL_TYPES = [
     TokenSecurityTool,
 ]
 
+_CHAIN_ONLY_TOOL_NAMES = {
+    "address_balance",
+    "address_identity",
+    "address_labels",
+    "address_malicious",
+    "address_pattern",
+    "address_transfers",
+    "token_data",
+    "token_holders",
+    "token_market_data",
+    "token_search",
+    "token_security",
+    "write_report",
+}
 
-def create_tool_instances():
+_COPILOT_ONLY_TOOL_TYPES = [
+    ReadFlowTool,
+    ReadNodeTool,
+    ReadRuleTool,
+    ReadHitsTool,
+    StrategySimulationTool,
+]
+
+_CODE_TOOL_TYPES = [
+    AgentTool,
+    AskUserTool,
+    BashTool,
+    BriefTool,
+    EditTool,
+    GlobTool,
+    GrepTool,
+    ReadTool,
+    SkillTool,
+    TodoWriteTool,
+    WebBrowserTool,
+    WebSearchTool,
+    WriteTool,
+]
+
+
+def create_tool_instances(tool_mode: str = "chain"):
     tool_types = list(_TOOL_TYPES)
+    if tool_mode == "copilot":
+        tool_types = [tool_type for tool_type in tool_types if tool_type.name not in _CHAIN_ONLY_TOOL_NAMES]
+        tool_types.extend(_COPILOT_ONLY_TOOL_TYPES)
+    elif tool_mode == "code":
+        tool_types = list(_CODE_TOOL_TYPES)
     if not Config.from_file().apis.coingecko_api_key:
         tool_types = [tool_type for tool_type in tool_types if tool_type not in (TokenDataTool, TokenMarketDataTool)]
     return [tool_type() for tool_type in tool_types]
@@ -93,6 +144,11 @@ __all__ = [
     "GlobTool",
     "GrepTool",
     "ReadTool",
+    "ReadFlowTool",
+    "ReadHitsTool",
+    "ReadNodeTool",
+    "ReadRuleTool",
+    "StrategySimulationTool",
     "SocialSearchTool",
     "SkillTool",
     "TokenHoldersTool",

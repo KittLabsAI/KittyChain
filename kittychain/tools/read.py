@@ -30,13 +30,13 @@ Read a file's contents with line numbers. Always read a file before editing it.
             },
             "limit": {
                 "type": "integer",
-                "description": "Max lines to read. Default 2000.",
+                "description": "Max lines to read. Default 100.",
             },
         },
         "required": ["file_path"],
     }
 
-    def execute(self, file_path: str, offset: int = 1, limit: int = 2000) -> str:
+    def execute(self, file_path: str, offset: int = 1, limit: int = 100) -> str:
         path = Path(file_path).expanduser().resolve()
         if not path.exists():
             return f"Error: {file_path} not found"

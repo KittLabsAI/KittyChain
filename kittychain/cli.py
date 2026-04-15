@@ -87,6 +87,14 @@ _INPUT_PROMPT_LABEL = ">"
 _AUTHOR_NAME = "Jimmy Ye"
 
 
+def _app_name_for_tool_mode(tool_mode: str) -> str:
+    return {
+        "chain": "KittyChain",
+        "copilot": "KittyCopilot",
+        "code": "KittyCode",
+    }.get(tool_mode, "KittyChain")
+
+
 def _copy_text_to_system_clipboard(text: str) -> bool:
     commands: list[list[str]] = []
     if sys.platform == "darwin":
@@ -240,6 +248,29 @@ def _parse_args():
         prog="kittychain",
         description="Minimal AI coding agent. Supports OpenAI-compatible and Anthropic APIs.",
     )
+    tool_mode_group = parser.add_mutually_exclusive_group()
+    tool_mode_group.add_argument(
+        "--chain",
+        dest="tool_mode",
+        action="store_const",
+        const="chain",
+        help="Load the full on-chain analysis toolset (default)",
+    )
+    tool_mode_group.add_argument(
+        "--copilot",
+        dest="tool_mode",
+        action="store_const",
+        const="copilot",
+        help="Load the risk-strategy copilot toolset for workflow and rule analysis",
+    )
+    tool_mode_group.add_argument(
+        "--code",
+        dest="tool_mode",
+        action="store_const",
+        const="code",
+        help="Load the coding-focused toolset for software engineering tasks",
+    )
+    parser.set_defaults(tool_mode="chain")
     parser.add_argument("--config", action="store_true", help="Open the guided configuration setup")
     parser.add_argument("-m", "--model", help=argparse.SUPPRESS)
     parser.add_argument("--interface", choices=["openai", "anthropic"], help=argparse.SUPPRESS)
@@ -292,7 +323,7 @@ def _ensure_api_key(config: Config) -> None:
         sys.exit(1)
 
 
-def _create_agent(config: Config) -> Agent:
+def _create_agent(config: Config, tool_mode: str = "chain") -> Agent:
     llm = LLM(
         model=config.model,
         api_key=config.api_key,
@@ -301,7 +332,14 @@ def _create_agent(config: Config) -> Agent:
         temperature=config.temperature,
         max_tokens=config.max_tokens,
     )
-    return Agent(llm=llm, max_context_tokens=config.max_context_tokens)
+    from .tools import create_tool_instances
+
+    return Agent(
+        llm=llm,
+        tools=create_tool_instances(tool_mode=tool_mode),
+        prompt_mode=tool_mode,
+        max_context_tokens=config.max_context_tokens,
+    )
 
 
 def _resume_agent_session(agent: Agent, session_id: str) -> Agent:
@@ -317,8 +355,10 @@ def _resume_agent_session(agent: Agent, session_id: str) -> Agent:
 
 def _build_cli_runtime(args) -> tuple[Config, Agent]:
     config = _apply_cli_overrides(_load_config(), args)
+    config.tool_mode = args.tool_mode
+    config.app_name = _app_name_for_tool_mode(args.tool_mode)
     _ensure_api_key(config)
-    agent = _create_agent(config)
+    agent = _create_agent(config, tool_mode=args.tool_mode)
 
     if args.resume:
         agent = _resume_agent_session(agent, args.resume)
@@ -380,6 +420,7 @@ def _repl(agent: Agent, config: Config):
             getattr(agent.llm, "total_completion_uncache_tokens", 0),
             getattr(agent.llm, "total_completion_cache_tokens", 0),
         ),
+        app_name=getattr(config, "app_name", "KittyChain"),
     )
     history_width = input_reader._history_render_width() if hasattr(input_reader, "_history_render_width") else console.size.width
     if hasattr(input_reader, "print_startup"):
@@ -587,6 +628,11 @@ def _show_help(io=None):
             "  /save          Save session to disk\n"
             "  /sessions      List saved sessions\n"
             "  /quit          Exit KittyChain\n"
+            "\n"
+            "[bold]Startup Flags:[/bold]\n"
+            "  --chain        Load the full on-chain analysis toolset (default)\n"
+            "  --copilot      Load the risk-strategy copilot toolset for workflow and rule analysis\n"
+            "  --code         Load the coding-focused toolset for software engineering tasks\n"
             "\n"
             "[bold]Shortcuts:[/bold]\n"
             "  Ctrl-Y         Enter copy mode for history messages\n"
@@ -1247,15 +1293,16 @@ class _MarkdownStreamRenderer:
         self._last_visible_text = ""
 
 
-def _render_startup_header(config: Config, width: int | None = None):
+def _render_startup_header(config: Config, width: int | None = None, app_name: str | None = None):
     width = width or console.size.width
-    left_lines = _startup_left_box_lines(config)
+    app_name = app_name or getattr(config, "app_name", "KittyChain")
+    left_lines = _startup_left_box_lines(config, app_name=app_name)
     left_width = max(_visible_width(line) for line in left_lines)
     gap = 2
     min_right_width = 28
 
     if width < left_width + gap + min_right_width:
-        return Text("\n".join(_startup_single_box_lines(config, width)))
+        return Text("\n".join(_startup_single_box_lines(config, width, app_name=app_name)))
 
     available_right = width - left_width - gap
     right_lines = _startup_right_box_lines(config, available_right, target_height=len(left_lines))
@@ -1269,9 +1316,9 @@ def _last_line_start_offset(text: str) -> int:
     return text.rfind("\n") + 1
 
 
-def _startup_left_box_lines(config: Config) -> list[str]:
+def _startup_left_box_lines(config: Config, app_name: str = "KittyChain") -> list[str]:
     content = _PIXEL_CAT_ART.splitlines() + [
-        f"KittyChain v{__version__}",
+        f"{app_name} v{__version__}",
         f"Model: {config.model}",
     ]
     inner_width = max(max(_visible_width(line) for line in content), 34)
@@ -1279,17 +1326,17 @@ def _startup_left_box_lines(config: Config) -> list[str]:
     return _box_lines(content, inner_width=inner_width, align="center", line_alignments=alignments)
 
 
-def _startup_single_box_lines(config: Config, total_width: int) -> list[str]:
-    left_lines = _startup_left_box_lines(config)
+def _startup_single_box_lines(config: Config, total_width: int, app_name: str = "KittyChain") -> list[str]:
+    left_lines = _startup_left_box_lines(config, app_name=app_name)
     left_width = max(_visible_width(line) for line in left_lines)
     if total_width >= left_width:
         return left_lines
-    return _startup_compact_box_lines(config, total_width)
+    return _startup_compact_box_lines(config, total_width, app_name=app_name)
 
 
-def _startup_compact_box_lines(config: Config, total_width: int) -> list[str]:
+def _startup_compact_box_lines(config: Config, total_width: int, app_name: str = "KittyChain") -> list[str]:
     content = [
-        f"KittyChain v{__version__}",
+        f"{app_name} v{__version__}",
         f"Model: {config.model}",
     ]
     if total_width < 16:
@@ -1331,8 +1378,8 @@ def _startup_right_box_lines(config: Config, total_width: int, target_height: in
     available_content_width = max(total_width - box_chrome_width, 1)
     min_content_width = max(min(available_content_width, total_width // 2), 12)
     raw_content = [
-        f"Interface: {config.interface}",
-        f"Base: {config.base_url or 'default'}",
+        f"Interface: {getattr(config, 'interface', 'default')}",
+        f"Base: {getattr(config, 'base_url', None) or 'default'}",
     ]
     startup_hint = "Type /help for commands, press Ctrl-Y to copy history, Esc to interrupt a run, /quit to exit."
     raw_content.extend(
@@ -1765,10 +1812,11 @@ def render_message_to_text(role: str, kind: str, text: str, width: int = 80) -> 
 
 
 class _ReadlineInput:
-    def __init__(self, history_path: str, command_provider, token_provider=None):
+    def __init__(self, history_path: str, command_provider, token_provider=None, app_name: str = "KittyChain"):
         self.history_path = history_path
         self.command_provider = command_provider
         self.token_provider = token_provider or (lambda: (0, 0, 0, 0))
+        self.app_name = app_name
 
         self.history = FileHistory(history_path)
         self.completer = SlashCommandCompleter(command_provider)
@@ -2358,7 +2406,7 @@ class _ReadlineInput:
             center = "Copy mode: drag in history, Ctrl-Y/Enter copy, Tab/Esc cancel"
         text = _compose_footer_line(
             width=width,
-            left=f"KittyChain v{__version__}",
+            left=f"{self.app_name} v{__version__}",
             center=center,
             right=f"input={read_tokens} (+{read_cache_tokens} cached) output={write_tokens} (+{write_cache_tokens} cached)",
         )
@@ -2592,8 +2640,8 @@ class _PromptToolkitOutputFile:
         return sys.stdout.fileno()
 
 
-def _build_input_reader(history_path: str, command_provider, token_provider=None):
-    return _ReadlineInput(history_path, command_provider, token_provider=token_provider)
+def _build_input_reader(history_path: str, command_provider, token_provider=None, app_name: str = "KittyChain"):
+    return _ReadlineInput(history_path, command_provider, token_provider=token_provider, app_name=app_name)
 
 
 def _normalize_output_text(text: str) -> str:

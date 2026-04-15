@@ -56,8 +56,18 @@ def test_system_prompt_mentions_optional_system_reminder_tag_and_user_prompt_inc
 
     assert "<system-reminder>" in system
     assert "<system-reminder>" in user
-    assert "深度调查模式已开启" in user
-    assert "一层/二层交易对手地址信息" in user
+    assert "Deep investigation mode is enabled" in user
+    assert "first- and second-level counterparty address information" in user
+
+
+def test_user_prompt_uses_copilot_specific_deep_mode_reminder():
+    prompt = prompt_builder.user_prompt("hello", mode="deep", prompt_mode="copilot")
+
+    assert "<system-reminder>" in prompt
+    assert "Deep investigation mode is enabled" in prompt
+    assert "generate a new rule_details" in prompt
+    assert "strategy_simulation" in prompt
+    assert "detailed report" in prompt
 
 
 def test_system_prompt_describes_onchain_risk_analysis_role():
@@ -67,6 +77,31 @@ def test_system_prompt_describes_onchain_risk_analysis_role():
 
     assert "You are KittyChain, an AI on-chain risk analysis assistant running in the user's terminal." in system
     assert "You help with on-chain risk analysis" in system
+
+
+def test_system_prompt_code_mode_matches_kittycode_role_and_rules():
+    tool = SimpleNamespace(name="demo_tool", description="Demo tool")
+
+    system = prompt_builder.system_prompt([tool], mode="code")
+
+    assert "You are KittyCode, an AI coding assistant running in the user's terminal." in system
+    assert "You help with software engineering" in system
+    assert "# Rules" in system
+    assert "1. Read before edit." in system
+    assert "8. Ask when unsure." in system
+
+
+def test_system_prompt_copilot_mode_mentions_strategy_automation_workflow():
+    tool = SimpleNamespace(name="demo_tool", description="Demo tool")
+
+    system = prompt_builder.system_prompt([tool], mode="copilot")
+
+    assert "risk strategy automation" in system.lower()
+    assert "Bad and strategy result=pass and reason code is empty" in system
+    assert "Good and (strategy result=review/reject or reason code is not empty)" in system
+    assert "use read_flow" in system
+    assert "read_node, read_rule, read_hits" in system
+    assert "will not create more misses or false positives" in system
 
 
 def test_system_prompt_includes_onchain_lookup_rules():
@@ -124,18 +159,20 @@ def test_agent_initializes_system_prompt_with_loaded_skills(monkeypatch):
     class DummyLLM:
         pass
 
-    def fake_system_prompt(tools, skills=None):
+    def fake_system_prompt(tools, skills=None, mode="chain"):
         captured["tools"] = tools
         captured["skills"] = skills
+        captured["mode"] = mode
         return "SYSTEM"
 
     monkeypatch.setattr(agent_module, "load_skills", lambda force_reload=True: loaded_skills)
     monkeypatch.setattr(agent_module, "system_prompt", fake_system_prompt)
 
-    agent = agent_module.Agent(llm=DummyLLM(), tools=[])
+    agent = agent_module.Agent(llm=DummyLLM(), tools=[], prompt_mode="copilot")
 
     assert agent.skills == loaded_skills
     assert captured["skills"] == loaded_skills
+    assert captured["mode"] == "copilot"
     assert agent._system == "SYSTEM"
 
 
@@ -249,6 +286,20 @@ def test_footer_uses_input_output_cached_format(tmp_path):
     assert "input=11 (+4 cached) output=7 (+2 cached)" in fragments[0][1]
 
 
+def test_footer_uses_mode_specific_branding(tmp_path):
+    reader = cli._ReadlineInput(
+        str(tmp_path / "history"),
+        lambda: [],
+        token_provider=lambda: (11, 4, 7, 2),
+        app_name="KittyCode",
+    )
+    reader._footer_width = lambda: 200
+
+    fragments = reader._render_footer_fragments()
+
+    assert "KittyCode v" in fragments[0][1]
+
+
 def test_show_help_mentions_copy_mode_and_escape_interrupt():
     outputs = []
 
@@ -265,6 +316,56 @@ def test_show_help_mentions_copy_mode_and_escape_interrupt():
     assert "copy mode" in rendered.lower()
     assert "Esc" in rendered
     assert "interrupt" in rendered.lower()
+    assert "--chain" in rendered
+    assert "--copilot" in rendered
+    assert "--code" in rendered
+
+
+def test_render_startup_header_uses_mode_specific_branding():
+    config = SimpleNamespace(model="gpt-test")
+
+    chain = cli._render_startup_header(config, width=120, app_name="KittyChain")
+    copilot = cli._render_startup_header(config, width=120, app_name="KittyCopilot")
+    code = cli._render_startup_header(config, width=120, app_name="KittyCode")
+
+    assert "KittyChain v" in chain.plain
+    assert "KittyCopilot v" in copilot.plain
+    assert "KittyCode v" in code.plain
+
+
+def test_parse_args_defaults_to_chain_mode(monkeypatch):
+    monkeypatch.setattr(cli.sys, "argv", ["kittychain"])
+
+    args = cli._parse_args()
+
+    assert args.tool_mode == "chain"
+
+
+def test_parse_args_accepts_copilot_mode(monkeypatch):
+    monkeypatch.setattr(cli.sys, "argv", ["kittychain", "--copilot"])
+
+    args = cli._parse_args()
+
+    assert args.tool_mode == "copilot"
+
+
+def test_parse_args_accepts_code_mode(monkeypatch):
+    monkeypatch.setattr(cli.sys, "argv", ["kittychain", "--code"])
+
+    args = cli._parse_args()
+
+    assert args.tool_mode == "code"
+
+
+def test_parse_args_rejects_legacy_internal_mode(monkeypatch):
+    monkeypatch.setattr(cli.sys, "argv", ["kittychain", "--internal"])
+
+    try:
+        cli._parse_args()
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("expected --internal to be rejected")
 
 
 def test_repl_deep_command_applies_to_one_message_only(monkeypatch):

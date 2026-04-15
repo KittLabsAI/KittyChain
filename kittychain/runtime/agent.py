@@ -84,11 +84,13 @@ class Agent:
         self,
         llm: LLM,
         tools: list[Tool] | None = None,
+        prompt_mode: str = "chain",
         max_context_tokens: int = 128_000,
         max_rounds: int = 50,
     ):
         self.llm = llm
         self.tools = list(tools) if tools is not None else create_tool_instances()
+        self.prompt_mode = prompt_mode
         self._state = AgentState()
         self._state_lock = threading.Lock()
         self._run_local = threading.local()
@@ -272,7 +274,12 @@ class Agent:
         return [{"role": "system", "content": self._system}] + self.messages
 
     def _build_user_message(self, user_input: str) -> str:
-        return user_prompt(user_input, todos=self.todos, mode=self.mode)
+        return user_prompt(
+            user_input,
+            todos=self.todos,
+            mode=self.mode,
+            prompt_mode=self.prompt_mode,
+        )
 
     def _tool_schemas(self) -> list[dict]:
         return [tool.schema() for tool in self.tools]
@@ -414,7 +421,7 @@ class Agent:
 
     def _initialize_prompt_state(self) -> None:
         self.skills = load_skills(force_reload=True)
-        self._system = system_prompt(self.tools, self.skills)
+        self._system = system_prompt(self.tools, self.skills, mode=self.prompt_mode)
 
     def refresh_skills(self, force_reload: bool = False):
         """Compatibility shim for startup-only skill loading.

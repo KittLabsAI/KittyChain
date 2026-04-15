@@ -28,3 +28,4 @@ docs/superpowers
 demo/
 reports/
 lib/
+.worktrees/

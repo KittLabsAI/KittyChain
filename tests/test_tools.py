@@ -1,4 +1,6 @@
+import csv
 import io
+import json
 import os
 import subprocess
 import sys
@@ -27,6 +29,11 @@ import kittychain.tools.edit as edit_module
 import kittychain.tools.glob as glob_module
 import kittychain.tools.grep as grep_module
 import kittychain.tools.read as read_module
+import kittychain.tools.read_flow as read_flow_module
+import kittychain.tools.read_hits as read_hits_module
+import kittychain.tools.read_node as read_node_module
+import kittychain.tools.read_rule as read_rule_module
+import kittychain.tools.strategy_simulation as strategy_simulation_module
 import kittychain.tools.social_search as social_search_module
 import kittychain.tools.skill as skill_module
 import kittychain.tools.token_holders as token_holders_module
@@ -68,6 +75,11 @@ from kittychain.tools.token_security import TokenSecurityTool, main as token_sec
 
 
 class ToolsTests(unittest.TestCase):
+    def test_agents_guide_mentions_main_entry_point_for_new_tools(self):
+        text = Path("AGENTS.md").read_text(encoding="utf-8")
+
+        self.assertIn("New tools should include a main() entry point", text)
+
     def test_config_package_exposes_api_config(self):
         self.assertEqual(Config.from_file("/tmp/does-not-exist.json").apis, ApiConfig())
 
@@ -1134,6 +1146,899 @@ class ToolsTests(unittest.TestCase):
         self.assertNotIn("edit", tool_names)
         self.assertNotIn("write", tool_names)
 
+    def test_create_tool_instances_skips_chain_only_tools_in_copilot_mode(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances(tool_mode="copilot")
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        for name in (
+            "address_balance",
+            "address_identity",
+            "address_labels",
+            "address_malicious",
+            "address_pattern",
+            "address_transfers",
+            "token_data",
+            "token_holders",
+            "token_market_data",
+            "token_search",
+            "token_security",
+            "write_report",
+        ):
+            self.assertNotIn(name, tool_names)
+
+    def test_create_tool_instances_keeps_chain_only_tools_in_chain_mode(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances(tool_mode="chain")
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        for name in (
+            "address_balance",
+            "address_identity",
+            "address_labels",
+            "address_malicious",
+            "address_pattern",
+            "address_transfers",
+            "token_data",
+            "token_holders",
+            "token_market_data",
+            "token_search",
+            "token_security",
+            "write_report",
+        ):
+            self.assertIn(name, tool_names)
+
+    def test_create_tool_instances_includes_internal_only_tools_in_internal_mode(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances(tool_mode="copilot")
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        for name in ("read_flow", "read_node", "read_rule", "read_hits", "strategy_simulation"):
+            self.assertIn(name, tool_names)
+
+    def test_create_tool_instances_excludes_internal_only_tools_in_chain_mode(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances(tool_mode="chain")
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        for name in ("read_flow", "read_node", "read_rule", "read_hits", "strategy_simulation"):
+            self.assertNotIn(name, tool_names)
+
+    def test_create_tool_instances_code_mode_matches_expected_whitelist(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tools = tools_module.create_tool_instances(tool_mode="code")
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        tool_names = [tool.name for tool in tools]
+        self.assertEqual(
+            tool_names,
+            [
+                "agent",
+                "ask_user",
+                "bash",
+                "brief",
+                "edit",
+                "glob",
+                "grep",
+                "read",
+                "skill",
+                "todo_write",
+                "web_browser",
+                "web_search",
+                "write",
+            ],
+        )
+
+    def test_read_flow_tool_renders_tree_text_from_demo_csv(self):
+        from kittychain.tools.read_flow import ReadFlowTool
+
+        tool = ReadFlowTool()
+
+        output = tool.execute(biz_flow_csv="demo/data/biz_flow.csv", biz_type="register")
+
+        self.assertIn("用户注册", output)
+        self.assertIn("开始", output)
+        self.assertIn("特征因子观察节点", output)
+        self.assertIn("APP注册", output)
+        self.assertIn("结果汇总", output)
+
+    def test_read_node_tool_groups_rules_by_selected_nodes(self):
+        from kittychain.tools.read_node import ReadNodeTool
+
+        tool = ReadNodeTool()
+
+        output = tool.execute(
+            node_rules_csv="demo/data/node_rules.csv",
+            node_names=["手机规则节点"],
+            biz_type="register",
+        )
+
+        self.assertIn("手机规则节点", output)
+        self.assertIn("Black_Carrier | 手机号运营商黑名单", output)
+        self.assertIn("priority=2", output)
+        self.assertIn("rule_status=1", output)
+        self.assertIn("reason_code=R09", output)
+        self.assertNotIn("特征因子观察节点", output)
+        self.assertLess(output.index("SMS_IP_Country_Conflict | 短信号码国家和IP冲突"), output.index("Black_Carrier | 手机号运营商黑名单"))
+        self.assertLess(output.index("Black_Carrier | 手机号运营商黑名单"), output.index("StartWithZero | 0开头的规则"))
+
+    def test_read_rule_tool_requires_rule_names_or_rule_name_cns(self):
+        from kittychain.tools.read_rule import ReadRuleTool
+
+        tool = ReadRuleTool()
+
+        output = tool.execute(
+            node_rules_csv="demo/data/node_rules.csv",
+            rule_details_csv="demo/data/rule_details.csv",
+            rule_names=None,
+            rule_name_cns=None,
+            biz_type="register",
+        )
+
+        self.assertEqual(output, "Error: rule_names or rule_name_cns is required")
+
+    def test_read_rule_tool_renders_logic_strategy_and_reason(self):
+        from kittychain.tools.read_rule import ReadRuleTool
+
+        tool = ReadRuleTool()
+
+        output = tool.execute(
+            node_rules_csv="demo/data/node_rules.csv",
+            rule_details_csv="demo/data/rule_details.csv",
+            rule_names=["rateLimit"],
+            rule_name_cns=None,
+            biz_type="register",
+        )
+
+        self.assertIn("直接限频", output)
+        self.assertIn("命中逻辑", output)
+        self.assertIn("赋值逻辑", output)
+        self.assertIn("reject", output)
+        self.assertIn("R05", output)
+
+    def test_read_rule_tool_keeps_chained_conditions_in_hit_logic(self):
+        from kittychain.tools.read_rule import ReadRuleTool
+
+        tool = ReadRuleTool()
+
+        output = tool.execute(
+            node_rules_csv="demo/data/node_rules.csv",
+            rule_details_csv="demo/data/rule_details.csv",
+            rule_names=None,
+            rule_name_cns=["GPS聚集规则1H"],
+            biz_type="register",
+        )
+
+        self.assertIn(
+            "命中逻辑: (获取对象属性 (geo信息, isoCode) in 常量-羊毛国家码) 且 (获取邮箱后缀 (注册邮箱) not in 常量-常用域名) 且 (gps1h注册量_保留2 > 30)",
+            output,
+        )
+        self.assertIn(
+            "赋值逻辑: 羊毛标签 = true 命中60分钟gps注册次数超限 = true",
+            output,
+        )
+
+    def test_read_rule_maps_condition_tokens_to_readable_text(self):
+        from kittychain.tools import read_rule as read_rule_module
+
+        mapped = [
+            read_rule_module._map_rule_token("visual_condition_empty"),
+            read_rule_module._map_rule_token("visual_condition_eq"),
+            read_rule_module._map_rule_token("visual_condition_false"),
+            read_rule_module._map_rule_token("visual_condition_in"),
+            read_rule_module._map_rule_token("visual_condition_lt"),
+            read_rule_module._map_rule_token("visual_condition_me"),
+            read_rule_module._map_rule_token("visual_condition_mt"),
+            read_rule_module._map_rule_token("visual_condition_not_empty"),
+            read_rule_module._map_rule_token("visual_condition_not_eq"),
+            read_rule_module._map_rule_token("visual_condition_not_in"),
+            read_rule_module._map_rule_token("visual_condition_startWith"),
+            read_rule_module._map_rule_token("visual_condition_true"),
+        ]
+
+        self.assertEqual(
+            mapped,
+            [
+                "不存在",
+                "=",
+                "为假",
+                "in",
+                "<",
+                ">=",
+                ">",
+                "存在",
+                "!=",
+                "not in",
+                "始于",
+                "为真",
+            ],
+        )
+
+    def test_read_hits_tool_requires_user_ids(self):
+        from kittychain.tools.read_hits import ReadHitsTool
+
+        tool = ReadHitsTool()
+
+        output = tool.execute(
+            rule_hits_csv="demo/data/rule_hits.csv",
+            biz_variables_csv="demo/data/biz_variables.csv",
+            biz_inputs_csv="demo/data/biz_inputs.csv",
+            user_ids=None,
+            biz_type="register",
+        )
+
+        self.assertEqual(output, "Error: user_ids is required")
+
+    def test_read_hits_tool_rejects_empty_user_ids_list(self):
+        from kittychain.tools.read_hits import ReadHitsTool
+
+        tool = ReadHitsTool()
+
+        output = tool.execute(
+            rule_hits_csv="demo/data/rule_hits.csv",
+            biz_variables_csv="demo/data/biz_variables.csv",
+            biz_inputs_csv="demo/data/biz_inputs.csv",
+            user_ids=[],
+            biz_type="register",
+        )
+
+        self.assertEqual(
+            output,
+            "Error: validation failed - user_ids cannot be empty, please try again with valid user IDs. "
+            "You can use `bash` tool to extract user IDs from the CSV file if needed.",
+        )
+
+    def test_read_hits_tool_rejects_blank_user_ids_list(self):
+        from kittychain.tools.read_hits import ReadHitsTool
+
+        tool = ReadHitsTool()
+
+        output = tool.execute(
+            rule_hits_csv="demo/data/rule_hits.csv",
+            biz_variables_csv="demo/data/biz_variables.csv",
+            biz_inputs_csv="demo/data/biz_inputs.csv",
+            user_ids=["", "   "],
+            biz_type="register",
+        )
+
+        self.assertEqual(
+            output,
+            "Error: validation failed - user_ids cannot be empty, please try again with valid user IDs. "
+            "You can use `bash` tool to extract user IDs from the CSV file if needed.",
+        )
+
+    def test_read_hits_tool_maps_inputs_and_retries_until_llm_returns_json(self):
+        from kittychain.tools.read_hits import ReadHitsTool
+
+        class FakeLLM:
+            def __init__(self):
+                self.calls = []
+                self.responses = [
+                    "not-json",
+                    json.dumps(
+                        [
+                            {
+                                "user_id": "u1",
+                                "key_information": "设备异常，风险分数高",
+                            }
+                        ],
+                        ensure_ascii=False,
+                    ),
+                ]
+
+            def clone(self):
+                return self
+
+            def complete(self, messages, system="", cancel_event=None):
+                self.calls.append({"messages": messages, "system": system})
+                return SimpleNamespace(content=self.responses[len(self.calls) - 1])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            rule_hits_csv = root / "rule_hits.csv"
+            biz_variables_csv = root / "biz_variables.csv"
+            biz_inputs_csv = root / "biz_inputs.csv"
+            rule_hits_csv.write_text(
+                "biz_type,user_id,f_timestamp,s,e,o,dt\n"
+                "\"register\",\"u1\",\"2026-03-01 00:00:00\",\"{\"\"device_id\"\":\"\"d-1\"\",\"\"ip\"\":\"\"1.1.1.1\"\"}\",\"{\"\"inner_rule_result\"\":{\"\"rateLimit\"\":true},\"\"inner_strategyMap\"\":{\"\"rateLimit\"\":\"\"reject\"\"},\"\"inner_reasonCodeMap\"\":{\"\"rateLimit\"\":\"\"R05\"\"},\"\"risk_alias\"\":95,\"\"foo_var\"\":1}\",\"{\"\"strategy\"\": [\"\"reject\"\"]}\",\"2026-03-01\"\n",
+                encoding="utf-8",
+            )
+            biz_variables_csv.write_text(
+                "biz_type,biz_name,var_name,var_id,dt\n"
+                "register,用户注册,示例变量,foo_var,2026-03-01\n",
+                encoding="utf-8",
+            )
+            biz_inputs_csv.write_text(
+                "var_name,var_id,alias\n"
+                "设备ID,device_id,-\n"
+                "IP地址,ip,-\n"
+                "风险分,unused_var,risk_alias\n",
+                encoding="utf-8",
+            )
+
+            llm = FakeLLM()
+            tool = ReadHitsTool()
+            tool.bind_agent(SimpleNamespace(llm=llm))
+
+            output = tool.execute(
+                rule_hits_csv=str(rule_hits_csv),
+                biz_variables_csv=str(biz_variables_csv),
+                biz_inputs_csv=str(biz_inputs_csv),
+                user_ids=["u1"],
+                biz_type="register",
+            )
+
+        self.assertEqual(
+            json.loads(output),
+            [
+                {
+                    "user_id": "u1",
+                    "key_information": "设备异常，风险分数高",
+                    "hit_rules": "rateLimit",
+                    "strategy": "reject",
+                    "reason_codes": "R05",
+                }
+            ],
+        )
+        self.assertEqual(len(llm.calls), 2)
+        self.assertIn("返回 json 格式", llm.calls[0]["system"])
+        self.assertIn("user_id: u1", llm.calls[0]["messages"][0]["content"])
+        self.assertIn("完整信息: 设备ID=d-1; IP地址=1.1.1.1; 风险分=95; 示例变量=1", llm.calls[0]["messages"][0]["content"])
+        self.assertNotIn("hit_rules", llm.calls[0]["messages"][0]["content"])
+        self.assertEqual(llm.calls[1]["messages"][-2]["role"], "assistant")
+        self.assertEqual(llm.calls[1]["messages"][-2]["content"], "not-json")
+        self.assertIn("error", llm.calls[1]["messages"][-1]["content"].lower())
+
+    def test_read_hits_tool_strips_think_blocks_from_llm_output(self):
+        from kittychain.tools.read_hits import ReadHitsTool
+
+        class FakeLLM:
+            def clone(self):
+                return self
+
+            def complete(self, messages, system="", cancel_event=None):
+                return SimpleNamespace(
+                    content=(
+                        "<think>hidden</think>"
+                        '[{"user_id":"u1","key_information":"visible"}]'
+                    )
+                )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            rule_hits_csv = root / "rule_hits.csv"
+            biz_variables_csv = root / "biz_variables.csv"
+            biz_inputs_csv = root / "biz_inputs.csv"
+            rule_hits_csv.write_text(
+                "biz_type,user_id,f_timestamp,s,e,o,dt\n"
+                "\"register\",\"u1\",\"2026-03-01 00:00:00\",\"{\"\"device_id\"\":\"\"d-1\"\"}\",\"{\"\"inner_rule_result\"\":{\"\"rateLimit\"\":true},\"\"inner_strategyMap\"\":{\"\"rateLimit\"\":\"\"reject\"\"},\"\"inner_reasonCodeMap\"\":{\"\"rateLimit\"\":\"\"R05\"\"}}\",\"{}\",\"2026-03-01\"\n",
+                encoding="utf-8",
+            )
+            biz_variables_csv.write_text(
+                "biz_type,biz_name,var_name,var_id,dt\n",
+                encoding="utf-8",
+            )
+            biz_inputs_csv.write_text(
+                "var_name,var_id,alias\n"
+                "设备ID,device_id,-\n",
+                encoding="utf-8",
+            )
+
+            tool = ReadHitsTool()
+            tool.bind_agent(SimpleNamespace(llm=FakeLLM()))
+            output = tool.execute(
+                rule_hits_csv=str(rule_hits_csv),
+                biz_variables_csv=str(biz_variables_csv),
+                biz_inputs_csv=str(biz_inputs_csv),
+                user_ids=["u1"],
+                biz_type="register",
+            )
+
+        self.assertEqual(
+            json.loads(output),
+            [
+                {
+                    "user_id": "u1",
+                    "key_information": "visible",
+                    "hit_rules": "rateLimit",
+                    "strategy": "reject",
+                    "reason_codes": "R05",
+                }
+            ],
+        )
+
+    def test_read_hits_tool_creates_fallback_llm_without_parent_agent(self):
+        class FakeLLM:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+                self.calls = []
+
+            def clone(self):
+                return self
+
+            def complete(self, messages, system="", cancel_event=None):
+                self.calls.append({"messages": messages, "system": system})
+                return SimpleNamespace(
+                    content=json.dumps(
+                        [{"user_id": "u1", "key_information": "fallback-summary"}],
+                        ensure_ascii=False,
+                    )
+                )
+
+        original_config_from_file = read_hits_module.Config.from_file
+        original_llm = read_hits_module.LLM
+        try:
+            read_hits_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(
+                model="demo-model",
+                api_key="demo-key",
+                interface="openai",
+                base_url="https://example.test/v1",
+                temperature=0,
+                max_tokens=256,
+            )
+            read_hits_module.LLM = FakeLLM
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                rule_hits_csv = root / "rule_hits.csv"
+                biz_variables_csv = root / "biz_variables.csv"
+                biz_inputs_csv = root / "biz_inputs.csv"
+                rule_hits_csv.write_text(
+                    "biz_type,user_id,f_timestamp,s,e,o,dt\n"
+                    "\"register\",\"u1\",\"2026-03-01 00:00:00\",\"{\"\"device_id\"\":\"\"d-1\"\"}\",\"{\"\"inner_rule_result\"\":{\"\"rateLimit\"\":true},\"\"inner_strategyMap\"\":{\"\"rateLimit\"\":\"\"reject\"\"},\"\"inner_reasonCodeMap\"\":{\"\"rateLimit\"\":\"\"R05\"\"}}\",\"{}\",\"2026-03-01\"\n",
+                    encoding="utf-8",
+                )
+                biz_variables_csv.write_text(
+                    "biz_type,biz_name,var_name,var_id,dt\n",
+                    encoding="utf-8",
+                )
+                biz_inputs_csv.write_text(
+                    "var_name,var_id,alias\n"
+                    "设备ID,device_id,-\n",
+                    encoding="utf-8",
+                )
+
+                output = read_hits_module.ReadHitsTool().execute(
+                    rule_hits_csv=str(rule_hits_csv),
+                    biz_variables_csv=str(biz_variables_csv),
+                    biz_inputs_csv=str(biz_inputs_csv),
+                    user_ids=["u1"],
+                    biz_type="register",
+                )
+        finally:
+            read_hits_module.Config.from_file = original_config_from_file
+            read_hits_module.LLM = original_llm
+
+        self.assertEqual(
+            json.loads(output),
+            [
+                {
+                    "user_id": "u1",
+                    "key_information": "fallback-summary",
+                    "hit_rules": "rateLimit",
+                    "strategy": "reject",
+                    "reason_codes": "R05",
+                }
+            ],
+        )
+
+    def test_read_flow_main_returns_success_and_prints_output(self):
+        original_execute = read_flow_module.ReadFlowTool.execute
+        try:
+            read_flow_module.ReadFlowTool.execute = lambda self, biz_flow_csv, biz_type=None: f"flow:{biz_flow_csv}:{biz_type}"
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = read_flow_module.main("demo/data/biz_flow.csv", "register")
+        finally:
+            read_flow_module.ReadFlowTool.execute = original_execute
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(buffer.getvalue().strip(), "flow:demo/data/biz_flow.csv:register")
+
+    def test_read_node_main_returns_success_and_prints_output(self):
+        original_execute = read_node_module.ReadNodeTool.execute
+        try:
+            read_node_module.ReadNodeTool.execute = (
+                lambda self, node_rules_csv, node_names=None, biz_type=None: f"node:{node_rules_csv}:{node_names}:{biz_type}"
+            )
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = read_node_module.main("demo/data/node_rules.csv", ["手机规则节点"], "register")
+        finally:
+            read_node_module.ReadNodeTool.execute = original_execute
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(buffer.getvalue().strip(), "node:demo/data/node_rules.csv:['手机规则节点']:register")
+
+    def test_read_rule_main_returns_success_and_prints_output(self):
+        original_execute = read_rule_module.ReadRuleTool.execute
+        try:
+            read_rule_module.ReadRuleTool.execute = (
+                lambda self, node_rules_csv, rule_details_csv, rule_names=None, rule_name_cns=None, biz_type=None:
+                f"rule:{node_rules_csv}:{rule_details_csv}:{rule_names}:{rule_name_cns}:{biz_type}"
+            )
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = read_rule_module.main(
+                    "demo/data/node_rules.csv",
+                    "demo/data/rule_details.csv",
+                    rule_names=["rateLimit"],
+                    biz_type="register",
+                )
+        finally:
+            read_rule_module.ReadRuleTool.execute = original_execute
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            buffer.getvalue().strip(),
+            "rule:demo/data/node_rules.csv:demo/data/rule_details.csv:['rateLimit']:None:register",
+        )
+
+    def test_read_hits_main_returns_success_and_prints_output(self):
+        original_execute = read_hits_module.ReadHitsTool.execute
+        try:
+            read_hits_module.ReadHitsTool.execute = (
+                lambda self, rule_hits_csv, biz_variables_csv, biz_inputs_csv, user_ids, biz_type=None:
+                f"hits:{rule_hits_csv}:{biz_variables_csv}:{biz_inputs_csv}:{user_ids}:{biz_type}"
+            )
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = read_hits_module.main(
+                    "demo/data/rule_hits.csv",
+                    "demo/data/biz_variables.csv",
+                    "demo/data/biz_inputs.csv",
+                    ["u1"],
+                    "register",
+                )
+        finally:
+            read_hits_module.ReadHitsTool.execute = original_execute
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            buffer.getvalue().strip(),
+            "hits:demo/data/rule_hits.csv:demo/data/biz_variables.csv:demo/data/biz_inputs.csv:['u1']:register",
+        )
+
+    def test_read_hits_script_entry_runs_without_relative_import_error(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = os.environ.copy()
+            env["HOME"] = tmpdir
+            result = subprocess.run(
+                [sys.executable, "kittychain/tools/read_hits.py"],
+                cwd=Path.cwd(),
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=5,
+            )
+
+        self.assertNotIn("attempted relative import beyond top-level package", result.stderr)
+
+    def test_strategy_simulation_tool_is_registered(self):
+        import kittychain.tools as tools_module
+
+        original_from_file = tools_module.Config.from_file
+        try:
+            tools_module.Config.from_file = lambda *args, **kwargs: SimpleNamespace(apis=SimpleNamespace(coingecko_api_key="cg-key"))
+            tool_names = [tool.name for tool in tools_module.create_tool_instances(tool_mode="copilot")]
+        finally:
+            tools_module.Config.from_file = original_from_file
+
+        self.assertIn("strategy_simulation", tool_names)
+
+    def test_strategy_simulation_tool_saves_filtered_results_with_conditions_and_reason_priority(self):
+        from kittychain.tools.strategy_simulation import StrategySimulationTool
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            biz_flow_csv = root / "biz_flow.csv"
+            node_rules_csv = root / "node_rules.csv"
+            rule_details_csv = root / "rule_details.csv"
+            biz_variables_csv = root / "biz_variables.csv"
+            biz_inputs_csv = root / "biz_inputs.csv"
+            rule_hits_csv = root / "rule_hits.csv"
+            condition_md = root / "condition.md"
+            output_csv = root / "out.csv"
+
+            biz_flow_csv.write_text(
+                'biz_type,biz_name,extend,dt\n'
+                'register,Demo,"{""nodes"":[{""id"":""start"",""label"":""开始"",""operatorType"":""INIT"",""index"":1},'
+                '{""id"":""cond_web"",""label"":""Web注册"",""operatorType"":""CONDITION"",""index"":2},'
+                '{""id"":""node_web"",""label"":""邮箱规则节点"",""operatorType"":""RULE"",""index"":3},'
+                '{""id"":""node_all"",""label"":""通用节点"",""operatorType"":""RULE"",""index"":4},'
+                '{""id"":""collect"",""label"":""结果汇总"",""operatorType"":""COLLECT"",""index"":5}],'
+                '""edges"":[{""source"":""start"",""target"":""cond_web"",""index"":1},'
+                '{""source"":""cond_web"",""target"":""node_web"",""index"":2},'
+                '{""source"":""node_web"",""target"":""node_all"",""index"":3},'
+                '{""source"":""node_all"",""target"":""collect"",""index"":4},'
+                '{""source"":""start"",""target"":""node_all"",""index"":5}]}'
+                '",2026-03-01\n',
+                encoding="utf-8",
+            )
+            node_rules_csv.write_text(
+                "biz_type,biz_name,node_code,node_name,rule_name,rule_name_cn,priority,node_status,rule_status,strategy,reason_code,dt\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,1,1,1,reject,R01,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,funcRule,函数规则,2,1,1,review,R02,2026-03-01\n"
+                "register,Demo,node_node_all,通用节点,markReview,标记复审,1,1,1,review,R03,2026-03-01\n",
+                encoding="utf-8",
+            )
+            rule_details_csv.write_text(
+                "biz_type,biz_name,node_code,node_name,rule_name,rule_name_cn,item_id,field,field_cn,dt\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,1,(,,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,2,s.regUserEmail,注册邮箱,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,3,visual_condition_in,visual_condition_in,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,4,['temp.com'],['temp.com'],2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,5,),,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,6,flag_web,命中Web邮箱规则,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,7,=,=,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,tempReject,临时邮箱拒绝,8,true,true,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,funcRule,函数规则,9,my_func,my_func,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,funcRule,函数规则,10,(,,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,funcRule,函数规则,11,s.userId,userId,2026-03-01\n"
+                "register,Demo,node_node_web,邮箱规则节点,funcRule,函数规则,12,),,2026-03-01\n"
+                "register,Demo,node_node_all,通用节点,markReview,标记复审,13,(,,2026-03-01\n"
+                "register,Demo,node_node_all,通用节点,markReview,标记复审,14,flag_web,命中Web邮箱规则,2026-03-01\n"
+                "register,Demo,node_node_all,通用节点,markReview,标记复审,15,visual_condition_true,visual_condition_true,2026-03-01\n"
+                "register,Demo,node_node_all,通用节点,markReview,标记复审,16,),,2026-03-01\n",
+                encoding="utf-8",
+            )
+            biz_variables_csv.write_text(
+                "biz_type,biz_name,var_name,var_id,dt\n"
+                "register,Demo,风险分数,risk_score,2026-03-01\n",
+                encoding="utf-8",
+            )
+            biz_inputs_csv.write_text(
+                "var_name,var_id,alias\n"
+                "客户端平台,platform,-\n"
+                "注册邮箱,regUserEmail,-\n"
+                "userId,userId,-\n"
+                "请求时间,requestTime,-\n",
+                encoding="utf-8",
+            )
+            rule_hits_csv.write_text(
+                "biz_type,user_id,f_timestamp,s,e,o,dt\n"
+                "\"register\",\"u-web\",\"2026-03-01 00:00:00\",\"{\"\"requestId\"\":\"\"req-1\"\",\"\"platform\"\":\"\"KUCOIN_WEB\"\",\"\"regUserEmail\"\":\"\"temp.com\"\",\"\"userId\"\":\"\"u-web\"\"}\",\"{\"\"inner_rule_result\"\":{\"\"node_node_web.funcRule\"\":true},\"\"risk_score\"\":88}\",\"{}\",\"2026-03-01\"\n"
+                "\"register\",\"u-app\",\"2026-03-01 00:00:00\",\"{\"\"requestId\"\":\"\"req-2\"\",\"\"platform\"\":\"\"KUCOIN_APP\"\",\"\"regUserEmail\"\":\"\"temp.com\"\",\"\"userId\"\":\"\"u-app\"\"}\",\"{\"\"inner_rule_result\"\":{\"\"node_node_web.funcRule\"\":true},\"\"risk_score\"\":70}\",\"{}\",\"2026-03-01\"\n",
+                encoding="utf-8",
+            )
+            condition_md.write_text("Web注册: s.platform in ['KUCOIN_WEB']\n", encoding="utf-8")
+
+            result = StrategySimulationTool().execute(
+                biz_flow_csv=str(biz_flow_csv),
+                node_rules_csv=str(node_rules_csv),
+                rule_details_csv=str(rule_details_csv),
+                biz_variables_csv=str(biz_variables_csv),
+                biz_inputs_csv=str(biz_inputs_csv),
+                rule_hits_csv=str(rule_hits_csv),
+                condition_md=str(condition_md),
+                user_ids=["u-web"],
+                path=str(output_csv),
+            )
+
+            self.assertEqual(result, f"Results have been saved to {output_csv}")
+            rows = output_csv.read_text(encoding="utf-8").strip().splitlines()
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(
+                rows[1],
+                "req-1,u-web,tempReject|funcRule|markReview,reject,R01|R02|R03",
+            )
+
+    def test_strategy_simulation_tool_returns_error_when_condition_file_is_missing(self):
+        from kittychain.tools.strategy_simulation import StrategySimulationTool
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            biz_flow_csv = root / "biz_flow.csv"
+            node_rules_csv = root / "node_rules.csv"
+            rule_details_csv = root / "rule_details.csv"
+            biz_variables_csv = root / "biz_variables.csv"
+            biz_inputs_csv = root / "biz_inputs.csv"
+            rule_hits_csv = root / "rule_hits.csv"
+            condition_md = root / "condition.md"
+            output_csv = root / "out.csv"
+
+            biz_flow_csv.write_text(
+                'biz_type,biz_name,extend,dt\n'
+                'register,Demo,"{""nodes"":[{""id"":""start"",""label"":""开始"",""operatorType"":""INIT"",""index"":1},'
+                '{""id"":""cond_web"",""label"":""Web注册"",""operatorType"":""CONDITION"",""index"":2}],'
+                '""edges"":[{""source"":""start"",""target"":""cond_web"",""index"":1}]}",2026-03-01\n',
+                encoding="utf-8",
+            )
+            node_rules_csv.write_text(
+                "biz_type,biz_name,node_code,node_name,rule_name,rule_name_cn,priority,node_status,rule_status,strategy,reason_code,dt\n",
+                encoding="utf-8",
+            )
+            rule_details_csv.write_text(
+                "biz_type,biz_name,node_code,node_name,rule_name,rule_name_cn,item_id,field,field_cn,dt\n",
+                encoding="utf-8",
+            )
+            biz_variables_csv.write_text(
+                "biz_type,biz_name,var_name,var_id,dt\n",
+                encoding="utf-8",
+            )
+            biz_inputs_csv.write_text(
+                "var_name,var_id,alias\n"
+                "请求时间,requestTime,-\n",
+                encoding="utf-8",
+            )
+            rule_hits_csv.write_text(
+                "biz_type,user_id,f_timestamp,s,e,o,dt\n"
+                "\"register\",\"u1\",\"2026-03-01 00:00:00\",\"{\"\"requestId\"\":\"\"req-1\"\"}\",\"{}\",\"{}\",\"2026-03-01\"\n",
+                encoding="utf-8",
+            )
+
+            result = StrategySimulationTool().execute(
+                biz_flow_csv=str(biz_flow_csv),
+                node_rules_csv=str(node_rules_csv),
+                rule_details_csv=str(rule_details_csv),
+                biz_variables_csv=str(biz_variables_csv),
+                biz_inputs_csv=str(biz_inputs_csv),
+                rule_hits_csv=str(rule_hits_csv),
+                condition_md=str(condition_md),
+                user_ids=None,
+                path=str(output_csv),
+            )
+
+            self.assertEqual(result, f"Error: {condition_md} not found")
+
+    def test_strategy_simulation_main_returns_success_and_prints_output(self):
+        original_execute = strategy_simulation_module.StrategySimulationTool.execute
+        try:
+            strategy_simulation_module.StrategySimulationTool.execute = (
+                lambda self, biz_flow_csv, node_rules_csv, rule_details_csv, biz_variables_csv, biz_inputs_csv, rule_hits_csv, condition_md, path, user_ids=None:
+                f"simulate:{biz_flow_csv}:{node_rules_csv}:{rule_details_csv}:{biz_variables_csv}:{biz_inputs_csv}:{rule_hits_csv}:{condition_md}:{user_ids}:{path}"
+            )
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = strategy_simulation_module.main(
+                    "demo/data/biz_flow.csv",
+                    "demo/data/node_rules.csv",
+                    "demo/data/rule_details.csv",
+                    "demo/data/biz_variables.csv",
+                    "demo/data/biz_inputs.csv",
+                    "demo/data/rule_hits.csv",
+                    "demo/data/condition.md",
+                    "demo/out.csv",
+                    ["u1"],
+                )
+        finally:
+            strategy_simulation_module.StrategySimulationTool.execute = original_execute
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            buffer.getvalue().strip(),
+            "simulate:demo/data/biz_flow.csv:demo/data/node_rules.csv:demo/data/rule_details.csv:demo/data/biz_variables.csv:demo/data/biz_inputs.csv:demo/data/rule_hits.csv:demo/data/condition.md:['u1']:demo/out.csv",
+        )
+
+    def test_strategy_simulation_unknown_numeric_token_is_treated_as_empty_value(self):
+        context = {"s": {"requestTime": 100}, "e": {}, "raw": {"requestTime": 100}, "names": {}}
+
+        result = strategy_simulation_module._evaluate_expression(
+            ["s.requestTime", "<", "var_missing_threshold"],
+            context,
+        )
+
+        self.assertFalse(result)
+
+    def test_strategy_simulation_load_rule_details_prefers_field_cn_when_present(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "rule_details.csv"
+            path.write_text(
+                "biz_type,biz_name,node_code,node_name,rule_name,rule_name_cn,item_id,field,field_cn,dt\n"
+                "register,Demo,node_1,节点A,ruleA,规则A,1,var_foo,中文变量,2026-03-01\n"
+                "register,Demo,node_1,节点A,ruleA,规则A,2,visual_condition_true,,2026-03-01\n",
+                encoding="utf-8",
+            )
+
+            details = strategy_simulation_module._load_rule_details(str(path), "register")
+
+        self.assertEqual(details[("node_1", "ruleA")], ["中文变量", "visual_condition_true"])
+
+    def test_strategy_simulation_maps_chinese_logic_tokens(self):
+        context = {"s": {}, "e": {}, "raw": {"变量A": True, "变量B": False}, "names": {"变量A": True, "变量B": False}}
+
+        result = strategy_simulation_module._evaluate_expression(
+            strategy_simulation_module._normalize_tokens(["(", "变量A", ")", "且", "(", "变量B", ")"]),
+            context,
+        )
+
+        self.assertFalse(result)
+
+    def test_strategy_simulation_unknown_named_token_is_treated_as_empty_value(self):
+        context = {"s": {}, "e": {}, "raw": {}, "names": {}}
+
+        self.assertIsNone(strategy_simulation_module._resolve_token_value("设备模糊指纹", context))
+
+    def test_strategy_simulation_condition_lookup_is_case_insensitive(self):
+        conditions = strategy_simulation_module._load_conditions_map({"App注册": "s.platform = 'APP'"})
+
+        self.assertEqual(conditions["app注册"], "s.platform = 'APP'")
+
+    def test_strategy_simulation_supports_arithmetic_inside_comparisons(self):
+        context = {"s": {}, "e": {}, "raw": {"A": 6, "B": 10}, "names": {"A": 6, "B": 10}}
+
+        result = strategy_simulation_module._evaluate_expression(
+            strategy_simulation_module._normalize_tokens(["A", ">=", "B", "/", "2"]),
+            context,
+        )
+
+        self.assertTrue(result)
+
+    def test_strategy_simulation_missing_values_do_not_match_on_equality(self):
+        context = {"s": {}, "e": {}, "raw": {}, "names": {}}
+
+        result = strategy_simulation_module._evaluate_expression(
+            ["s.regUserPwd", "=", "s.inviterUserPwd"],
+            context,
+        )
+
+        self.assertFalse(result)
+
+    def test_strategy_simulation_demo_output_matches_rule_hits_o_field(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_csv = Path(tmpdir) / "out.csv"
+
+            exit_code = strategy_simulation_module.main(
+                "demo/data/biz_flow.csv",
+                "demo/data/node_rules.csv",
+                "demo/data/rule_details.csv",
+                "demo/data/biz_variables.csv",
+                "demo/data/biz_inputs.csv",
+                "demo/data/rule_hits.csv",
+                "/Users/kc/PycharmProjects/kucoin/agent/copilot_agent/data/condition.md",
+                str(output_csv),
+            )
+
+            self.assertEqual(exit_code, 0)
+
+            output_rows = list(csv.DictReader(output_csv.open(encoding="utf-8-sig", newline="")))
+            hit_rows = list(csv.DictReader(Path("demo/data/rule_hits.csv").open(encoding="utf-8-sig", newline="")))
+            output_by_user = {row["user_id"]: row for row in output_rows}
+
+            self.assertEqual(len(output_rows), len(hit_rows))
+
+            for hit_row in hit_rows:
+                output_row = output_by_user[hit_row["user_id"]]
+                output_reasons = sorted(code for code in output_row["reason_codes"].split("|") if code)
+                payload = json.loads(hit_row["o"]) if hit_row["o"] else {}
+                strategies = payload.get("strategy") or []
+                expected_strategy = "pass"
+                if strategies:
+                    first = str(strategies[0]).lower()
+                    expected_strategy = "pass" if first in ("accept", "pass") else first
+                expected_reasons = sorted(set((payload.get("data") or {}).get("reasonCode") or []))
+
+                self.assertEqual(output_row["strategy_result"], expected_strategy)
+                self.assertEqual(output_reasons, expected_reasons)
     def test_token_holders_tool_is_registered(self):
         from kittychain.tools import get_tool
 
@@ -2174,6 +3079,37 @@ class ToolsTests(unittest.TestCase):
         self.assertNotIn("Association Graph", kwargs["system"])
         self.assertIn("must call write_report", kwargs["system"])
         self.assertIn("If the report mode is `deep`, make it thorough", kwargs["system"])
+
+    def test_write_report_strips_think_blocks_from_llm_output(self):
+        class FakeLLM:
+            def clone(self):
+                return self
+
+            def complete(self, messages, **kwargs):
+                return SimpleNamespace(
+                    content=(
+                        "<think>hidden</think>"
+                        "# Summary\n\nVisible report"
+                    )
+                )
+
+        html = write_report_module.generate_markdown_report(
+            {
+                "type": "address",
+                "mode": "normal",
+                "origin_address": "0xabc",
+                "token_name": "",
+                "token_contract_address": "",
+                "top_holders": [],
+                "top_lp_holders": [],
+                "relevant_addresses": [],
+                "sources": ["https://example.com"],
+                "content": "demo",
+            },
+            SimpleNamespace(llm=FakeLLM()),
+        )
+
+        self.assertEqual(html, "# Summary\n\nVisible report")
 
     def test_write_report_generates_token_report_without_graph_when_not_needed(self):
         class FakeLLM:

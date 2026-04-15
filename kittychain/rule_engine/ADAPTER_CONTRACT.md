@@ -14,6 +14,8 @@ If the user input is ambiguous, incomplete, contradictory, or open to multiple p
 
 The adapter must not silently choose a business interpretation.
 
+Unless the user explicitly asks for source trace fields in the standardized JSON, the adapter must not include raw source file metadata such as `source_file`, `source_row_id`, or similar file-level provenance fields in the package output.
+
 This rule has higher priority than speed, convenience, or partial completion.
 
 ## Mandatory Behavior
@@ -73,7 +75,7 @@ If the source does not provide a stable ID, the adapter may generate a determini
 
 ### 5. Preserve Traceability
 
-Each normalized object should preserve source trace metadata whenever possible.
+The adapter should preserve traceability in its implementation notes or response summary whenever possible, but should not emit raw source file provenance fields into the standardized JSON package unless the user explicitly requests them.
 
 Recommended trace fields:
 
@@ -83,7 +85,7 @@ Recommended trace fields:
 - `mapping_method`
 - `raw_fragments`
 
-The normalized output should make it possible to explain where a field came from.
+The adapter response should still make it possible to explain where a field came from.
 
 ### 6. Do Not Invent Rule Logic
 
@@ -179,7 +181,7 @@ The adapter is not responsible for:
 - Did I ask the user about every meaningful ambiguity?
 - Did I generate the complete standard package?
 - Did I keep workflow, nodes, rules, variables, history, and labels separate?
-- Did I preserve source trace metadata?
+- Did I avoid writing raw source file trace fields into the standardized JSON unless the user explicitly asked for them?
 - Did I validate all cross-file references?
 
 If any answer is no, the adapter should not claim completion.

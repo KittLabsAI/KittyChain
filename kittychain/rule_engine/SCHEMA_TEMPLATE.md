@@ -19,6 +19,7 @@ This document defines structure, required fields, conventions, and minimal examp
 - JSON keys must use snake_case.
 - Stable source IDs may preserve source naming style in values.
 - `scene_key` is the required scene-level reference key across files.
+- The standardized schema must not include a top-level `source` field in rules, history records, or user labels.
 
 ### Time
 
@@ -180,22 +181,44 @@ Defines normalized rule logic for one scene.
 | `rule_name_cn` | string or null | yes | Optional localized name |
 | `status` | string | yes | See enumerations |
 | `priority` | integer or null | yes | Scene-level rule priority |
-| `hit_expression` | string | yes | Normalized hit logic |
-| `assignment_expression` | string | yes | Normalized assignment logic |
+| `hit_expression` | object | yes | Normalized structured hit logic |
+| `assignment_expression` | array | yes | Normalized structured assignment operations |
 | `action` | string | yes | `pass`, `review`, or `reject` |
 | `reason_codes` | array | yes | Array of strings |
-| `source` | object | yes | Source trace metadata |
 | `metadata` | object | yes | Optional custom attributes |
 
-### Source Object
+### Rule Expression Conventions
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `source_system` | string or null | yes | Upstream system name |
-| `source_file` | string or null | yes | Upstream file name or path |
-| `source_row_id` | string, integer, or null | no | Row identifier when available |
-| `mapping_method` | string or null | yes | `direct`, `derived`, `manual`, or similar |
-| `raw_fragments` | array or object | no | Original tokens or fragments |
+`hit_expression` and `assignment_expression` must use structured JSON rather than raw source-system operator tokens.
+
+Supported operators in `hit_expression`:
+
+- `=`
+- `!=`
+- `>`
+- `>=`
+- `<`
+- `in`
+- `not in`
+- `exist`
+- `not exist`
+- `is true`
+- `is false`
+- `start with`
+- `and`
+- `or`
+
+Formatting rules:
+
+- `hit_expression` contains only normalized hit logic.
+- Atomic hit expressions use objects with `var`, `operator`, and optional `value`.
+- Function operands use nested objects with `function` and `args`.
+- Boolean composition uses binary objects such as `{"and": [expr1, expr2]}` and `{"or": [expr1, expr2]}`.
+- `and` and `or` combine two expressions at a time.
+- Parentheses in the source expression define grouping priority. Without grouping, boolean expressions are combined in source order.
+- `assignment_expression` contains only normalized post-hit assignments.
+- `assignment_expression` uses arrays of assignment objects such as `{"var": "risk_level", "operator": "set", "value": "high"}`.
+- `assignment_expression` must not use free-form string statements.
 
 ## `schemas/scenes/<scene_key>/variables.json`
 
@@ -219,7 +242,7 @@ Defines scene-private variables for one scene.
 | `variable_key` | string | yes | Stable lookup key |
 | `variable_name` | string | yes | Display name |
 | `scope` | string | yes | `input` or `derived` |
-| `data_type` | string | yes | `string`, `number`, `boolean`, `object`, `array`, or domain-specific value |
+| `data_type` | string | yes | `double`, `string`, `long`, `list`, `bool`, `map`, or `other` |
 | `description` | string or null | yes | Business meaning |
 | `source_path` | string or null | yes | Original source path such as `s.requestTime` |
 | `default_value` | any | yes | Must be explicit |
@@ -251,6 +274,20 @@ Use the same structure as scene-local variables, with these additional fields:
 | `scope` | string | yes | Must be `public` |
 | `shared_by` | array | yes | Scene keys that reuse the variable |
 
+### Source Data Type Mapping
+
+When the source dataset provides a `data_type` code, adapters should normalize it as:
+
+- `1` -> `double`
+- `2` -> `string`
+- `3` -> `long`
+- `4` -> `list`
+- `5` -> `bool`
+- `6` -> `map`
+- `7` -> `other`
+
+If the source dataset provides an undocumented type code, normalize it to `other`.
+
 ## `history_data.json`
 
 ### Purpose
@@ -280,7 +317,6 @@ Defines normalized historical decision records.
 | `strategy_result` | string or null | yes | Final strategy value |
 | `reason_codes` | array | yes | Must remain an array |
 | `final_decision` | string or null | yes | Decision summary |
-| `source` | object | yes | Source trace metadata |
 | `raw_refs` | object | yes | Optional raw payload references |
 
 ## `user_labels.json`
@@ -307,7 +343,6 @@ Defines normalized user labels.
 | `label_type` | string or null | yes | Label category |
 | `scene_key` | string or null | yes | Related scene when applicable |
 | `applied_at` | string or null | yes | ISO 8601 |
-| `source` | object | yes | Source trace metadata |
 | `metadata` | object | yes | Optional custom attributes |
 
 ## Minimal Valid Package Checklist

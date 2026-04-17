@@ -151,11 +151,22 @@ Supported operators in `hit_expression`:
 - `and`
 - `or`
 
+Supported arithmetic operators inside operand expressions:
+
+- `+`
+- `-`
+- `*`
+- `/`
+
 Formatting rules:
 
 - `hit_expression` should contain only normalized hit logic.
-- Atomic hit expressions use objects such as `{"var": "ip国家码(解析)", "operator": "in", "value": ["US", "FR"]}`.
+- Atomic hit expressions use objects such as `{"var": "ip_iso_code", "operator": "in", "value": ["US", "FR"]}`.
+- Use `value` for literal right operands such as strings, numbers, booleans, arrays, and objects.
+- Use `right_var` when the right operand is another variable, for example `{"var": "requestTime", "operator": "<", "right_var": "finger_70016"}`.
+- Arithmetic expressions should be represented as nested structured objects instead of infix strings, for example `{"var": {"var": "same_prefix_count", "operator": "+", "value": 1}, "operator": ">", "value": 3}`.
 - Function operands use nested objects such as `{"function": "解密函数", "args": ["邮箱域名(aes密文)"]}`.
+- Function operands may appear on either side of a comparison. If the other side is a variable, use `right_var`.
 - Boolean composition uses binary objects such as `{"and": [expr1, expr2]}` or `{"or": [expr1, expr2]}`.
 - `and` and `or` only combine two expressions at a time.
 - Parentheses in the source expression define grouping priority. Without grouping, boolean expressions are combined in source order.

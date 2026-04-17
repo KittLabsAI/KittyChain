@@ -16,6 +16,11 @@ class ReadTool(Tool):
     name = "read"
     description = """
 Read a file's contents with line numbers. Always read a file before editing it.
+Assume this tool is able to read all files on the machine. If the User provides a path to a file assume that path is valid. It is okay to read a file that does not exist; an error will be returned.
+
+Usage:
+- The file_path parameter must be an absolute path, not a relative path
+- By default, it reads up to 2000 lines starting from the beginning of the file
     """
     parameters = {
         "type": "object",
@@ -30,13 +35,13 @@ Read a file's contents with line numbers. Always read a file before editing it.
             },
             "limit": {
                 "type": "integer",
-                "description": "Max lines to read. Default 100.",
+                "description": "Max lines to read. Default 2000.",
             },
         },
         "required": ["file_path"],
     }
 
-    def execute(self, file_path: str, offset: int = 1, limit: int = 100) -> str:
+    def execute(self, file_path: str, offset: int = 1, limit: int = 2000) -> str:
         path = Path(file_path).expanduser().resolve()
         if not path.exists():
             return f"Error: {file_path} not found"

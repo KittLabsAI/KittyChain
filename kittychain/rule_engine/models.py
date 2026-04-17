@@ -137,6 +137,57 @@ class RuleEnginePackage:
     scene_packages: dict[str, ScenePackage]
 
 
+@dataclass(frozen=True)
+class ReplayIssue:
+    code: str
+    message: str
+    rule_id: str | None = None
+
+
+@dataclass(frozen=True)
+class EvaluationResult:
+    matched: bool
+    value: object | None
+    issues: tuple[ReplayIssue, ...]
+
+
+@dataclass(frozen=True)
+class FieldDiff:
+    field_name: str
+    before: object
+    after: object
+    changed: bool
+
+
+@dataclass(frozen=True)
+class ReplayDiff:
+    record_id: str
+    fields: tuple[FieldDiff, ...]
+
+
+@dataclass(frozen=True)
+class ReplayResult:
+    record_id: str
+    scene_key: str
+    hit_rules: tuple[str, ...]
+    reason_codes: tuple[str, ...]
+    strategy_result: str | None
+    issues: tuple[ReplayIssue, ...]
+    changed: bool = False
+
+
+@dataclass(frozen=True)
+class ReplaySummary:
+    total_records: int
+    changed_records: int
+    unchanged_records: int
+    rule_hit_difference_counts: dict[str, int]
+    strategy_before: dict[str, int]
+    strategy_after: dict[str, int]
+    reason_codes_before: dict[str, int]
+    reason_codes_after: dict[str, int]
+
+
 def build_demo_rule_engine_package() -> RuleEnginePackage:
     workflow_node = WorkflowNode(
         node_id="node_demo",

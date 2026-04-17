@@ -101,6 +101,47 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _add_variable_name_mapping(
+    variable_name_to_key: dict[str, str],
+    variable_name: str | None,
+    variable_key: str,
+) -> None:
+    cleaned_name = _clean_text(variable_name)
+    if cleaned_name:
+        variable_name_to_key.setdefault(cleaned_name, variable_key)
+
+
+def _map_rule_variable_arg(value: object, variable_name_to_key: dict[str, str]) -> object:
+    if isinstance(value, str):
+        return variable_name_to_key.get(value, value)
+    return _map_rule_variable_refs(value, variable_name_to_key)
+
+
+def _map_rule_variable_refs(value: object, variable_name_to_key: dict[str, str]) -> object:
+    if isinstance(value, list):
+        return [_map_rule_variable_refs(item, variable_name_to_key) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    mapped: dict[str, object] = {}
+    for key, item in value.items():
+        if key == "var" and isinstance(item, str):
+            mapped[key] = variable_name_to_key.get(item, item)
+        elif key == "right_var" and isinstance(item, str):
+            mapped[key] = variable_name_to_key.get(item, item)
+        elif key == "value" and isinstance(item, str):
+            mapped_value = variable_name_to_key.get(item, item)
+            if mapped_value in variable_name_to_key.values():
+                mapped["right_var"] = mapped_value
+            else:
+                mapped[key] = mapped_value
+        elif key == "args" and isinstance(item, list):
+            mapped[key] = [_map_rule_variable_arg(arg, variable_name_to_key) for arg in item]
+        else:
+            mapped[key] = _map_rule_variable_refs(item, variable_name_to_key)
+    return mapped
+
+
 EXPRESSION_OPERATOR_MAP = {
     "visual_condition_empty": "not exist",
     "visual_condition_eq": "=",
@@ -137,6 +178,7 @@ COMPARISON_OPERATORS = {
 
 UNARY_OPERATORS = {"exist", "not exist", "is true", "is false"}
 BOOLEAN_OPERATORS = {"and", "or"}
+ARITHMETIC_OPERATORS = {"+", "-", "*", "/"}
 
 
 def _strip_source_trace_fields(value: object) -> object:
@@ -262,10 +304,31 @@ def _split_top_level_binary(tokens: list[str], operator: str) -> tuple[list[str]
     return None
 
 
+def _split_top_level_binary_any(tokens: list[str], operators: tuple[str, ...]) -> tuple[list[str], str, list[str]] | None:
+    depth = 0
+    for index in range(len(tokens) - 1, -1, -1):
+        token = tokens[index]
+        if token == "(":
+            depth -= 1
+        elif token == ")":
+            depth += 1
+        elif depth == 0 and token in operators:
+            return tokens[:index], token, tokens[index + 1 :]
+    return None
+
+
 def _parse_operand_tokens(tokens: list[str]) -> object:
     current = _strip_wrapping_parens(tokens)
     if not current:
         return ""
+    split = _split_top_level_binary_any(current, ("+", "-"))
+    if split is not None:
+        left, operator, right = split
+        return _build_binary_operand(left, operator, right)
+    split = _split_top_level_binary_any(current, ("*", "/"))
+    if split is not None:
+        left, operator, right = split
+        return _build_binary_operand(left, operator, right)
     if len(current) == 1:
         return _parse_scalar_token(current[0])
     if len(current) > 1 and current[1] == "(" and current[-1] == ")":
@@ -277,6 +340,16 @@ def _parse_operand_tokens(tokens: list[str]) -> object:
                 "args": args,
             }
     return " ".join(current)
+
+
+def _build_binary_operand(left_tokens: list[str], operator: str, right_tokens: list[str]) -> dict[str, object]:
+    left = _parse_operand_tokens(left_tokens)
+    right = _parse_operand_tokens(right_tokens)
+    return {
+        "var": left,
+        "operator": operator,
+        "value": right,
+    }
 
 
 def _parse_function_args(tokens: list[str]) -> list[object]:
@@ -318,7 +391,13 @@ def _parse_atomic_expression(tokens: list[str]) -> object:
                 "operator": token,
                 "value": right,
             }
-    return _parse_operand_tokens(current)
+    parsed = _parse_operand_tokens(current)
+    if isinstance(parsed, str):
+        return {
+            "var": parsed,
+            "operator": "is true",
+        }
+    return parsed
 
 
 def _parse_hit_expression(tokens: list[str]) -> object:
@@ -429,6 +508,13 @@ def generate_register_scene() -> None:
     rule_hit_rows = [row for row in _read_csv("rule_hits.csv") if row["biz_type"] == "register"]
     label_rows = _read_csv("user_labels.csv")
     input_rows = _read_csv("biz_inputs.csv")
+    variable_name_to_key: dict[str, str] = {}
+    for row in input_rows:
+        _add_variable_name_mapping(variable_name_to_key, row["var_name"], row["var_id"])
+    for row in variable_rows:
+        if row["biz_type"] not in {"register", "common"}:
+            continue
+        _add_variable_name_mapping(variable_name_to_key, row["var_name"], row["var_id"])
 
     condition_map = _condition_map()
     source_inputs = _read_json_column(rule_hit_rows, "s")
@@ -563,13 +649,13 @@ def generate_register_scene() -> None:
         for row in rows:
             fragments = detail_by_rule[_rule_detail_key(row)]
             hit_expression, assignment_expression = _build_rule_expressions(fragments)
+            hit_expression = _map_rule_variable_refs(hit_expression, variable_name_to_key)
+            assignment_expression = _map_rule_variable_refs(assignment_expression, variable_name_to_key)
             reason_codes = [row["reason_code"]] if row["reason_code"] else []
             if row["strategy"]:
                 action = row["strategy"]
-            elif reason_codes:
-                action = "review"
             else:
-                action = "pass"
+                action = "accept"
             rules.append(
                 {
                     "rule_id": row["rule_name"],
@@ -685,12 +771,6 @@ def generate_register_scene() -> None:
                 hit_rules.append(rule_id)
         reason_codes = ((source_output.get("data") or {}).get("reasonCode")) or []
         strategy = (source_output.get("strategy") or [None])[0]
-        if strategy == "reject":
-            final_decision = "reject"
-        elif reason_codes:
-            final_decision = "review"
-        else:
-            final_decision = strategy
         request_id = source_input.get("requestId") or f"row_{index:04d}"
         history_data["records"].append(
             {
@@ -703,7 +783,6 @@ def generate_register_scene() -> None:
                 "hit_rules": hit_rules,
                 "strategy_result": strategy,
                 "reason_codes": reason_codes,
-                "final_decision": final_decision,
                 "raw_refs": {
                     "decision_hit": source_output.get("hit"),
                     "request_id": request_id,

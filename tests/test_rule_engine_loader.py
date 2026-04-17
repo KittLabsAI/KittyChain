@@ -55,7 +55,7 @@ def test_load_rule_engine_package_returns_register_scene_content():
     assert register_history.record_id.startswith("history_register_")
     assert register_history.reason_codes == ("R06",)
     assert register_history.strategy_result == "accept"
-    assert register_history.final_decision == "review"
+    assert register_history.final_decision is None
     assert register_label.scene_key == "register"
     assert register_label.label in {"Bad", "Neutral", "Good"}
     device_model_url_public = next(
@@ -90,6 +90,26 @@ def test_load_rule_engine_package_parses_register_rule_expressions():
         for rule in package.scene_packages["register"].rules
         if rule.rule_id == "whiteCountry"
     )
+    minute_device_rule = next(
+        rule
+        for rule in package.scene_packages["register"].rules
+        if rule.rule_id == "minuteDeviceUseNumberHit"
+    )
+    day_device_rule = next(
+        rule
+        for rule in package.scene_packages["register"].rules
+        if rule.rule_id == "dayDeviceUseNumberOf7Hit"
+    )
+    minute_web_rule = next(
+        rule
+        for rule in package.scene_packages["register"].rules
+        if rule.rule_id == "minuteWebDeviceUseNumberHit"
+    )
+    day_web_rule = next(
+        rule
+        for rule in package.scene_packages["register"].rules
+        if rule.rule_id == "dayWebDeviceUseNumberOf7Hit"
+    )
 
     assert gps_rule.hit_expression == {
         "and": [
@@ -98,42 +118,42 @@ def test_load_rule_engine_package_parses_register_rule_expressions():
                     {
                         "var": {
                             "function": "获取对象属性",
-                            "args": ["geo信息", "isoCode"],
+                            "args": ["geoInfo", "isoCode"],
                         },
                         "operator": "in",
-                        "value": "常量-羊毛国家码",
+                        "right_var": "woolConutrys",
                     },
                     {
                         "var": {
                             "function": "获取邮箱后缀",
-                            "args": ["注册邮箱"],
+                            "args": ["regUserEmail"],
                         },
                         "operator": "not in",
-                        "value": "常量-常用域名",
+                        "right_var": "conf_commonMailbox",
                     },
                 ]
             },
             {
-                "var": "gps1h注册量_保留2",
+                "var": "gps2_50939_1h",
                 "operator": ">",
                 "value": 30,
             },
         ]
     }
     assert gps_rule.assignment_expression == [
-        {"var": "羊毛标签", "operator": "set", "value": True},
-        {"var": "命中60分钟gps注册次数超限", "operator": "set", "value": True},
+        {"var": "woolTag", "operator": "set", "value": True},
+        {"var": "gps1HourHit", "operator": "set", "value": True},
     ]
     assert gps_rule.reason_codes == ("R10",)
     assert medium_risk_rule.hit_expression == {
         "and": [
             {
-                "var": "数美设备指纹策略命中结果",
+                "var": "fingerStrategyHitsSm",
                 "operator": "=",
                 "value": "MEDIUM",
             },
             {
-                "var": "数美设备指纹",
+                "var": "fingerIdSm",
                 "operator": "exist",
             },
         ]
@@ -143,17 +163,17 @@ def test_load_rule_engine_package_parses_register_rule_expressions():
             {
                 "var": "-0",
                 "operator": "in",
-                "value": "用户手机号",
+                "right_var": "regUserPhone",
             },
             {
                 "and": [
                     {
                         "var": "-",
                         "operator": "not in",
-                        "value": "用户手机号",
+                        "right_var": "regUserPhone",
                     },
                     {
-                        "var": "用户手机号",
+                        "var": "regUserPhone",
                         "operator": "start with",
                         "value": "0",
                     },
@@ -164,20 +184,32 @@ def test_load_rule_engine_package_parses_register_rule_expressions():
     assert white_country_rule.hit_expression == {
         "and": [
             {
-                "var": "ip国家码(解析)",
+                "var": "ip_isoCode_contry",
                 "operator": "in",
                 "value": ["US", "FR", "GB", "DE", "CA"],
             },
             {
                 "var": {
                     "function": "解密函数",
-                    "args": ["邮箱域名(aes密文)"],
+                    "args": ["emailSuffixAes"],
                 },
                 "operator": "in",
                 "value": ["gmail.com", "outlook.com"],
             },
         ]
     }
+    assert minute_device_rule.hit_expression["and"][0]["and"][0]["and"][0]["var"] == "finger_50933_60m"
+    assert day_device_rule.hit_expression["and"][0]["and"][0]["and"][0]["var"] == "finger_50934_168h"
+    assert minute_web_rule.hit_expression["and"][0]["and"][0]["and"][0]["and"][1]["or"][0]["and"][0] == {
+        "var": "whiteCountryUser",
+        "operator": "is true",
+    }
+    assert minute_web_rule.hit_expression["and"][0]["and"][0]["and"][0]["and"][1]["or"][0]["and"][1]["var"] == "finger_50933_60m"
+    assert day_web_rule.hit_expression["and"][0]["and"][0]["and"][0]["and"][1]["or"][0]["and"][0] == {
+        "var": "whiteCountryUser",
+        "operator": "is true",
+    }
+    assert day_web_rule.hit_expression["and"][0]["and"][0]["and"][0]["and"][1]["or"][0]["and"][1]["var"] == "finger_50934_168h"
 
 
 def test_loader_module_main_prints_package_summary():

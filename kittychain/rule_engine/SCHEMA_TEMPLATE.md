@@ -208,16 +208,27 @@ Supported operators in `hit_expression`:
 - `and`
 - `or`
 
+Supported arithmetic operators inside operand expressions:
+
+- `+`
+- `-`
+- `*`
+- `/`
+
 Formatting rules:
 
 - `hit_expression` contains only normalized hit logic.
-- Atomic hit expressions use objects with `var`, `operator`, and optional `value`.
+- Atomic hit expressions use objects such as `{"var": "ip_iso_code", "operator": "in", "value": ["US", "FR"]}`.
+- Use `value` for literal right operands such as strings, numbers, booleans, arrays, and objects.
+- Use `right_var` when the right operand is another variable, for example `{"var": "requestTime", "operator": "<", "right_var": "finger_70016"}`.
+- Arithmetic expressions should be represented as nested structured objects instead of infix strings, for example `{"var": {"var": "same_prefix_count", "operator": "+", "value": 1}, "operator": ">", "value": 3}`.
 - Function operands use nested objects with `function` and `args`.
+- Function operands may appear on either side of a comparison. If the other side is a variable, use `right_var`.
 - Boolean composition uses binary objects such as `{"and": [expr1, expr2]}` and `{"or": [expr1, expr2]}`.
 - `and` and `or` combine two expressions at a time.
 - Parentheses in the source expression define grouping priority. Without grouping, boolean expressions are combined in source order.
 - `assignment_expression` contains only normalized post-hit assignments.
-- `assignment_expression` uses arrays of assignment objects such as `{"var": "risk_level", "operator": "set", "value": "high"}`.
+- `assignment_expression` uses arrays of assignment objects such as `[{"var": "risk_level", "operator": "set", "value": "high"}]`.
 - `assignment_expression` must not use free-form string statements.
 
 ## `schemas/scenes/<scene_key>/variables.json`

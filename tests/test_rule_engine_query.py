@@ -39,7 +39,7 @@ def test_list_node_rules_returns_rules_in_node_reference_order():
 def test_get_rule_returns_named_rule_definition():
     rule = get_rule("register", "Web_SM_Device_MediumRisk")
 
-    assert rule.action == "pass"
+    assert rule.action == "accept"
     assert rule.reason_codes == ()
 
 

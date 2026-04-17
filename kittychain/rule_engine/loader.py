@@ -154,7 +154,7 @@ def _load_history_record(data: dict[str, object]) -> HistoryRecord:
         hit_rules=tuple(data["hit_rules"]),
         strategy_result=data["strategy_result"],
         reason_codes=tuple(data["reason_codes"]),
-        final_decision=data["final_decision"],
+        final_decision=data.get("final_decision"),
         raw_refs=dict(data["raw_refs"]),
     )
 

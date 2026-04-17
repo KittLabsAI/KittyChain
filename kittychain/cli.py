@@ -87,6 +87,14 @@ _INPUT_PROMPT_LABEL = ">"
 _AUTHOR_NAME = "Jimmy Ye"
 
 
+def _cleanup_web_browser_sessions() -> None:
+    try:
+        from .tools.web_browser import cleanup_all_sessions
+    except Exception:
+        return
+    cleanup_all_sessions()
+
+
 def _app_name_for_tool_mode(tool_mode: str) -> str:
     return {
         "chain": "KittyChain",
@@ -446,6 +454,7 @@ def _repl(agent: Agent, config: Config):
             return
 
         if user_input == "/quit":
+            _cleanup_web_browser_sessions()
             request_exit = getattr(input_reader, "request_exit", None)
             if callable(request_exit):
                 request_exit()
@@ -1470,6 +1479,26 @@ class _PermissionModalState:
     selected_index: int
     done: threading.Event
     result: dict[str, str | None]
+    scroll_offset: int = 0
+
+
+class _PermissionModalControl(FormattedTextControl):
+    def __init__(self, reader: "_ReadlineInput"):
+        self._reader = reader
+        super().__init__(
+            reader._render_permission_modal_fragments,
+            focusable=True,
+            show_cursor=False,
+        )
+
+    def mouse_handler(self, mouse_event):
+        if mouse_event.event_type == MouseEventType.SCROLL_UP:
+            self._reader._scroll_permission_modal_ui(-1)
+            return None
+        if mouse_event.event_type == MouseEventType.SCROLL_DOWN:
+            self._reader._scroll_permission_modal_ui(1)
+            return None
+        return super().mouse_handler(mouse_event)
 
 
 def _merge_prompt_toolkit_styles(*styles: str) -> str:
@@ -1890,16 +1919,13 @@ class _ReadlineInput:
             dont_extend_height=True,
         )
         self._permission_modal_window = Window(
-            content=FormattedTextControl(
-                self._render_permission_modal_fragments,
-                focusable=True,
-                show_cursor=False,
-            ),
+            content=_PermissionModalControl(self),
             wrap_lines=True,
             always_hide_cursor=True,
             dont_extend_width=True,
             dont_extend_height=True,
             width=Dimension(preferred=76, max=76),
+            height=Dimension(preferred=14, max=14),
         )
         self._permission_modal_overlay = ConditionalContainer(
             content=HSplit(
@@ -2063,6 +2089,7 @@ class _ReadlineInput:
                 description=description.strip(),
                 options=list(options),
                 selected_index=0,
+                scroll_offset=0,
                 done=done,
                 result=result,
             )
@@ -2233,6 +2260,8 @@ class _ReadlineInput:
         width = max(min(self._history_render_width() - 8, 72), 32)
         inner_width = max(width - 4, 1)
         lines: list[tuple[str, str]] = []
+        reserved_lines = len(modal.options) + 6
+        available_description_lines = max(1, 14 - reserved_lines)
 
         border = "+" + "-" * (width - 2) + "+"
         lines.append(("class:permission.modal", border + "\n"))
@@ -2244,8 +2273,17 @@ class _ReadlineInput:
         )
         lines.append(("class:permission.modal", "|" + " " * (width - 2) + "|\n"))
 
-        wrapped_description = textwrap.wrap(modal.description or "", width=max(inner_width, 1)) or [""]
-        for segment in wrapped_description:
+        description_lines: list[str] = []
+        for raw_line in (modal.description or "").splitlines() or [""]:
+            wrapped = textwrap.wrap(raw_line, width=max(inner_width, 1)) or [""]
+            description_lines.extend(wrapped)
+        max_offset = max(0, len(description_lines) - available_description_lines)
+        modal.scroll_offset = min(modal.scroll_offset, max_offset)
+        visible_description = description_lines[
+            modal.scroll_offset : modal.scroll_offset + available_description_lines
+        ]
+        visible_description.extend([""] * max(available_description_lines - len(visible_description), 0))
+        for segment in visible_description:
             lines.append(("class:permission.modal", "| " + _pad_visible(segment, inner_width) + " |\n"))
 
         lines.append(("class:permission.modal", "|" + " " * (width - 2) + "|\n"))
@@ -2260,9 +2298,7 @@ class _ReadlineInput:
         lines.append(
             (
                 "class:permission.modal",
-                "| "
-                + _pad_visible("Use Up/Down or 1-9, Enter confirms, Esc cancels", inner_width)
-                + " |\n",
+                "| " + _pad_visible("Use mouse wheel to scroll, Up/Down to select", inner_width) + " |\n",
             )
         )
         lines.append(("class:permission.modal", border))
@@ -2284,6 +2320,23 @@ class _ReadlineInput:
             return
         total = len(self._permission_modal.options)
         self._permission_modal.selected_index = (self._permission_modal.selected_index + delta) % total
+        self.application.invalidate()
+
+    def _scroll_permission_modal_ui(self, delta: int) -> None:
+        if self._permission_modal is None:
+            return
+        width = max(min(self._history_render_width() - 8, 72), 32)
+        inner_width = max(width - 4, 1)
+        description_lines: list[str] = []
+        for raw_line in (self._permission_modal.description or "").splitlines() or [""]:
+            wrapped = textwrap.wrap(raw_line, width=max(inner_width, 1)) or [""]
+            description_lines.extend(wrapped)
+        available_description_lines = max(1, 14 - (len(self._permission_modal.options) + 6))
+        max_offset = max(0, len(description_lines) - available_description_lines)
+        next_offset = min(max(self._permission_modal.scroll_offset + delta, 0), max_offset)
+        if next_offset == self._permission_modal.scroll_offset:
+            return
+        self._permission_modal.scroll_offset = next_offset
         self.application.invalidate()
 
     def _select_permission_option_ui(self, index: int) -> None:

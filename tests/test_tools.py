@@ -2357,32 +2357,19 @@ class ToolsTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("Updated todo list:", buffer.getvalue())
 
-    def test_web_browser_main_prints_fetched_content(self):
+    def test_web_browser_main_prints_open_result(self):
         class FakeCompleted:
             def __init__(self, stdout):
                 self.stdout = stdout
                 self.stderr = ""
                 self.returncode = 0
 
-        class FakeLLM:
-            def complete(self, messages, **kwargs):
-                self.messages = messages
-                self.kwargs = kwargs
-                return SimpleNamespace(content="Summarized browser content")
-
-        class FakeAgent:
-            def __init__(self):
-                self.llm = FakeLLM()
-
         calls = []
         outputs = iter(
             [
                 FakeCompleted(""),
-                FakeCompleted(""),
                 FakeCompleted("https://example.com"),
-                FakeCompleted("Hello from browser"),
-                FakeCompleted('[{"status": 200}]'),
-                FakeCompleted(""),
+                FakeCompleted("Example"),
             ]
         )
 
@@ -2395,14 +2382,14 @@ class ToolsTests(unittest.TestCase):
             web_browser_module.subprocess.run = fake_run
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                exit_code = web_browser_module.main("https://example.com", agent=FakeAgent())
+                exit_code = web_browser_module.main("open", session="s1", url="https://example.com")
         finally:
             web_browser_module.subprocess.run = original_run
         self.assertEqual(exit_code, 0)
-        self.assertIn("Summarized browser content", buffer.getvalue())
+        self.assertIn('"action": "open"', buffer.getvalue())
         self.assertEqual(calls[0][-2:], ["open", "https://example.com"])
 
-    def test_web_browser_execute_summarizes_page_text_with_agent_llm(self):
+    def test_web_browser_open_action_summarizes_page_text_with_intent(self):
         class FakeCompleted:
             def __init__(self, stdout):
                 self.stdout = stdout
@@ -2427,11 +2414,10 @@ class ToolsTests(unittest.TestCase):
         outputs = iter(
             [
                 FakeCompleted(""),
-                FakeCompleted(""),
                 FakeCompleted("https://example.com/risk"),
+                FakeCompleted("Risk page"),
                 FakeCompleted("Page body text"),
                 FakeCompleted('[{"status": 200}]'),
-                FakeCompleted(""),
             ]
         )
 
@@ -2440,11 +2426,13 @@ class ToolsTests(unittest.TestCase):
         tool.bind_agent(FakeAgent())
         try:
             web_browser_module.subprocess.run = lambda *args, **kwargs: next(outputs)
-            result = tool.execute("https://example.com", "extract counterparties", 20)
+            result = tool.execute(action="open", session="s1", url="https://example.com", intent="extract counterparties", timeout=20)
         finally:
             web_browser_module.subprocess.run = original_run
 
-        self.assertEqual(result, "Entity summary")
+        payload = json.loads(result)
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["summary"], "Entity summary")
         llm = tool._parent_agent.llm
         self.assertEqual(len(llm.complete_calls), 1)
         messages, kwargs = llm.complete_calls[0]
@@ -2455,7 +2443,7 @@ class ToolsTests(unittest.TestCase):
         self.assertIn("brief summary", kwargs["system"].lower())
         self.assertIn("next-step suggestion", kwargs["system"].lower())
 
-    def test_web_browser_execute_filters_think_blocks_from_summary(self):
+    def test_web_browser_get_action_filters_think_blocks_from_summary(self):
         class FakeCompleted:
             def __init__(self, stdout):
                 self.stdout = stdout
@@ -2475,12 +2463,8 @@ class ToolsTests(unittest.TestCase):
 
         outputs = iter(
             [
-                FakeCompleted(""),
-                FakeCompleted(""),
                 FakeCompleted("https://example.com/risk"),
                 FakeCompleted("Page body text"),
-                FakeCompleted('[{"status": 200}]'),
-                FakeCompleted(""),
             ]
         )
 
@@ -2489,29 +2473,224 @@ class ToolsTests(unittest.TestCase):
         tool.bind_agent(FakeAgent())
         try:
             web_browser_module.subprocess.run = lambda *args, **kwargs: next(outputs)
-            result = tool.execute("https://example.com", "summarize", 20)
+            result = tool.execute(action="get", session="s1", target="text", ref="@e1", intent="summarize", timeout=20)
         finally:
             web_browser_module.subprocess.run = original_run
 
-        self.assertEqual(result, "visibledone")
+        payload = json.loads(result)
+        self.assertEqual(payload["summary"], "visibledone")
 
-    def test_web_browser_execute_returns_retry_message_on_timeout(self):
-        class FakeAgent:
-            llm = None
-
+    def test_web_browser_open_action_returns_timeout_error_json(self):
         original_run = web_browser_module.subprocess.run
         tool = web_browser_module.WebBrowserTool()
-        tool.bind_agent(FakeAgent())
         try:
             def fake_run(*args, **kwargs):
                 raise subprocess.TimeoutExpired(cmd=args[0], timeout=20)
 
             web_browser_module.subprocess.run = fake_run
-            result = tool.execute("https://example.com", "summarize", 20)
+            result = tool.execute(action="open", session="s1", url="https://example.com", timeout=20)
         finally:
             web_browser_module.subprocess.run = original_run
 
-        self.assertEqual(result, "Timed out, please try again.")
+        payload = json.loads(result)
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["action"], "open")
+        self.assertEqual(payload["error"], "timeout")
+
+    def test_web_browser_schema_requires_action_for_new_interface(self):
+        tool = web_browser_module.WebBrowserTool()
+
+        schema = tool.schema()
+
+        self.assertIn("action", schema["function"]["parameters"]["properties"])
+        self.assertEqual(schema["function"]["parameters"]["required"], ["action", "session"])
+        self.assertEqual(
+            schema["function"]["parameters"]["properties"]["action"]["enum"],
+            [
+                "open",
+                "close",
+                "snapshot",
+                "get",
+                "is_visible",
+                "is_enabled",
+                "is_checked",
+                "wait",
+                "wait_download",
+                "screenshot",
+                "pdf",
+                "click",
+                "fill",
+                "type",
+                "scroll",
+                "scrollinto",
+                "select",
+            ],
+        )
+        self.assertIn("intent", schema["function"]["parameters"]["properties"])
+        self.assertNotIn("prompt", schema["function"]["parameters"]["properties"])
+
+    def test_web_browser_requires_session_for_actions(self):
+        tool = web_browser_module.WebBrowserTool()
+
+        result = tool.execute(action="open", url="https://example.com")
+
+        payload = json.loads(result)
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["error"], "invalid_arguments")
+        self.assertIn("session", payload["reason"])
+
+    def test_web_browser_open_action_returns_structured_json(self):
+        class FakeCompleted:
+            def __init__(self, stdout):
+                self.stdout = stdout
+                self.stderr = ""
+                self.returncode = 0
+
+        calls = []
+        outputs = iter(
+            [
+                FakeCompleted(""),
+                FakeCompleted("https://example.com/final"),
+                FakeCompleted("Example title"),
+            ]
+        )
+
+        original_run = web_browser_module.subprocess.run
+        tool = web_browser_module.WebBrowserTool()
+        try:
+            def fake_run(args, **kwargs):
+                calls.append(args)
+                return next(outputs)
+
+            web_browser_module.subprocess.run = fake_run
+            result = tool.execute(action="open", session="s1", url="https://example.com", timeout=20)
+        finally:
+            web_browser_module.subprocess.run = original_run
+
+        payload = json.loads(result)
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["action"], "open")
+        self.assertEqual(payload["data"]["url"], "https://example.com")
+        self.assertEqual(payload["data"]["final_url"], "https://example.com/final")
+        self.assertEqual(payload["data"]["title"], "Example title")
+        self.assertTrue(payload["data"]["redirected"])
+        self.assertEqual(calls[0][-2:], ["open", "https://example.com"])
+        self.assertEqual(calls[1][-2:], ["get", "url"])
+        self.assertEqual(calls[2][-2:], ["get", "title"])
+
+    def test_web_browser_snapshot_action_parses_elements(self):
+        class FakeCompleted:
+            def __init__(self, stdout):
+                self.stdout = stdout
+                self.stderr = ""
+                self.returncode = 0
+
+        outputs = iter(
+            [
+                FakeCompleted('@e1 [button] "Submit"\n@e2 [input type="email"] placeholder="Email"'),
+                FakeCompleted("https://example.com/form"),
+                FakeCompleted("Signup"),
+            ]
+        )
+
+        original_run = web_browser_module.subprocess.run
+        tool = web_browser_module.WebBrowserTool()
+        try:
+            web_browser_module.subprocess.run = lambda *args, **kwargs: next(outputs)
+            result = tool.execute(action="snapshot", session="demo", compact=True, depth=2, scope="#form")
+        finally:
+            web_browser_module.subprocess.run = original_run
+
+        payload = json.loads(result)
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["action"], "snapshot")
+        self.assertEqual(payload["session"], "demo")
+        self.assertEqual(payload["data"]["url"], "https://example.com/form")
+        self.assertEqual(payload["data"]["title"], "Signup")
+        self.assertEqual(payload["data"]["elements"][0]["ref"], "@e1")
+        self.assertEqual(payload["data"]["elements"][0]["text"], "Submit")
+        self.assertEqual(payload["data"]["elements"][1]["ref"], "@e2")
+        self.assertEqual(payload["data"]["elements"][1]["tag"], "input")
+
+    def test_web_browser_phase1_actions_map_to_expected_commands(self):
+        class FakeCompleted:
+            def __init__(self, stdout):
+                self.stdout = stdout
+                self.stderr = ""
+                self.returncode = 0
+
+        scenarios = [
+            (
+                {"action": "get", "session": "s1", "target": "url"},
+                ["agent-browser", "--session", "s1", "get", "url"],
+            ),
+            (
+                {"action": "is_visible", "session": "s1", "ref": "@e1"},
+                ["agent-browser", "--session", "s1", "is", "visible", "@e1"],
+            ),
+            (
+                {"action": "wait", "session": "s1", "wait_type": "load", "value": "networkidle"},
+                ["agent-browser", "--session", "s1", "wait", "--load", "networkidle"],
+            ),
+            (
+                {"action": "wait_download", "session": "s1", "path": "./file.zip"},
+                ["agent-browser", "--session", "s1", "wait", "--download", "./file.zip"],
+            ),
+            (
+                {"action": "screenshot", "session": "s1", "path": "page.png", "full": True},
+                ["agent-browser", "--session", "s1", "screenshot", "page.png", "--full"],
+            ),
+            (
+                {"action": "pdf", "session": "s1", "path": "page.pdf"},
+                ["agent-browser", "--session", "s1", "pdf", "page.pdf"],
+            ),
+            (
+                {"action": "click", "session": "s1", "ref": "@e1"},
+                ["agent-browser", "--session", "s1", "click", "@e1"],
+            ),
+            (
+                {"action": "fill", "session": "s1", "ref": "@e1", "value": "hello"},
+                ["agent-browser", "--session", "s1", "fill", "@e1", "hello"],
+            ),
+            (
+                {"action": "type", "session": "s1", "ref": "@e1", "value": "hello"},
+                ["agent-browser", "--session", "s1", "type", "@e1", "hello"],
+            ),
+            (
+                {"action": "scroll", "session": "s1", "direction": "down", "pixels": 500},
+                ["agent-browser", "--session", "s1", "scroll", "down", "500"],
+            ),
+            (
+                {"action": "scroll", "session": "s1", "direction": "down", "pixels": 500, "selector": "div.content"},
+                ["agent-browser", "--session", "s1", "scroll", "down", "500", "--selector", "div.content"],
+            ),
+            (
+                {"action": "scrollinto", "session": "s1", "ref": "@e1"},
+                ["agent-browser", "--session", "s1", "scrollinto", "@e1"],
+            ),
+            (
+                {"action": "select", "session": "s1", "ref": "@e1", "value": "California"},
+                ["agent-browser", "--session", "s1", "select", "@e1", "California"],
+            ),
+        ]
+
+        original_run = web_browser_module.subprocess.run
+        tool = web_browser_module.WebBrowserTool()
+        try:
+            for kwargs, expected in scenarios:
+                seen = []
+
+                def fake_run(args, **run_kwargs):
+                    seen.append(args)
+                    return FakeCompleted("ok")
+
+                web_browser_module.subprocess.run = fake_run
+                result = tool.execute(**kwargs)
+                payload = json.loads(result)
+                self.assertTrue(payload["success"])
+                self.assertEqual(seen[0], expected)
+        finally:
+            web_browser_module.subprocess.run = original_run
 
     def test_write_report_rejects_missing_token_fields(self):
         tool = write_report_module.WriteReportTool()

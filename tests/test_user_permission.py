@@ -4,8 +4,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from prompt_toolkit.application.current import set_app
+from prompt_toolkit.data_structures import Point
+from prompt_toolkit.mouse_events import MouseButton, MouseEvent, MouseEventType
 
 import kittychain.cli as cli
+import kittychain.tools.bash as bash_module
 import kittychain.tools.edit as edit_module
 import kittychain.tools.write as write_module
 from kittychain.hooks.user_permission import request_user_permission
@@ -149,6 +153,36 @@ def test_permission_modal_renderer_works_when_modal_is_active(tmp_path):
     assert "Deny" in rendered
 
 
+def test_permission_modal_mouse_wheel_scrolls_long_description(tmp_path):
+    history_path = tmp_path / "history.txt"
+    reader = cli._ReadlineInput(str(history_path), lambda: [])
+    reader._permission_modal = cli._PermissionModalState(
+        title="File Permission",
+        description="\n".join(f"line {index}" for index in range(1, 41)),
+        options=[
+            {"label": "Allow", "value": "allow"},
+            {"label": "Deny", "value": "deny"},
+        ],
+        selected_index=0,
+        done=threading.Event(),
+        result={"value": None},
+    )
+
+    before = "".join(text for _style, text in reader._render_permission_modal_fragments())
+
+    with set_app(reader.application):
+        reader._permission_modal_window.content.mouse_handler(
+            MouseEvent(Point(x=0, y=0), MouseEventType.SCROLL_DOWN, MouseButton.LEFT, frozenset())
+        )
+
+    after = "".join(text for _style, text in reader._render_permission_modal_fragments())
+
+    assert before != after
+    assert "line 1" in before
+    assert "line 1" not in after
+    assert "line 40" not in after
+
+
 def test_write_tool_returns_denied_without_writing_file(tmp_path):
     path = tmp_path / "note.txt"
     tool = write_module.WriteTool()
@@ -193,3 +227,60 @@ def test_edit_tool_writes_after_user_approves(tmp_path):
 
     assert result.startswith(f"Edited {path}")
     assert path.read_text() == "before goodbye after"
+
+
+def test_bash_tool_returns_denied_without_running_command(monkeypatch):
+    called = {"value": False}
+    tool = bash_module.BashTool()
+    tool.bind_agent(SimpleNamespace(permission_handler=lambda payload: "deny"))
+
+    def fake_run(*args, **kwargs):
+        called["value"] = True
+        raise AssertionError("bash command should not run when permission is denied")
+
+    monkeypatch.setattr(bash_module.subprocess, "run", fake_run)
+
+    result = tool.execute("pwd")
+
+    assert result == "User denied permission grant"
+    assert called["value"] is False
+
+
+def test_bash_tool_runs_after_user_approves(monkeypatch):
+    tool = bash_module.BashTool()
+    tool.bind_agent(SimpleNamespace(permission_handler=lambda payload: "allow"))
+
+    class FakeCompleted:
+        returncode = 0
+        stdout = "/tmp\n"
+        stderr = ""
+
+    monkeypatch.setattr(bash_module.subprocess, "run", lambda *args, **kwargs: FakeCompleted())
+
+    result = tool.execute("pwd")
+
+    assert "Exit code: 0" in result
+    assert "/tmp" in result
+
+
+def test_bash_tool_whitelisted_agent_browser_command_skips_permission(monkeypatch):
+    permission_called = {"value": False}
+    tool = bash_module.BashTool()
+    tool.bind_agent(
+        SimpleNamespace(
+            permission_handler=lambda payload: permission_called.__setitem__("value", True) or "deny"
+        )
+    )
+
+    class FakeCompleted:
+        returncode = 0
+        stdout = "ok\n"
+        stderr = ""
+
+    monkeypatch.setattr(bash_module.subprocess, "run", lambda *args, **kwargs: FakeCompleted())
+
+    result = tool.execute("agent-browser open https://example.com")
+
+    assert "Exit code: 0" in result
+    assert "ok" in result
+    assert permission_called["value"] is False

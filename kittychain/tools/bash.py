@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -12,8 +13,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # type: ignore
+    from hooks.user_permission import request_user_permission  # type: ignore
 else:
     from .base import Tool
+    from ..hooks.user_permission import request_user_permission
 
 _DANGEROUS_PATTERNS = [
     (r"\brm\s+(-\w*)?-r\w*\s+(/|~|\$HOME)", "recursive delete on home/root"),
@@ -31,6 +34,11 @@ _AVOID_COMMANDS = [
     "cat", "head", "tail", "sed", "awk", "echo",
     "find", "grep", "cat", "head", "tail", "sed", "awk", "echo"
 ]
+
+_PERMISSION_WHITELIST = {
+    "agent-browser",
+    "curl"
+}
 
 
 class BashTool(Tool):
@@ -69,6 +77,22 @@ Try to maintain your current working directory throughout the session by using a
         for pattern, reason in _DANGEROUS_PATTERNS:
             if re.search(pattern, command):
                 return f"Error: blocked shell command ({reason})"
+        agent = getattr(self, "_parent_agent", None)
+        if agent is not None and not _is_permission_whitelisted(command):
+            try:
+                decision = request_user_permission(
+                    agent,
+                    description=f"Allow the agent to run this shell command?\n\n{command}",
+                    options=[
+                        {"label": "Allow", "value": "allow"},
+                        {"label": "Deny", "value": "deny"},
+                    ],
+                    title="Bash Permission",
+                )
+            except (RuntimeError, ValueError) as exc:
+                return f"Error: {exc}"
+            if decision != "allow":
+                return "User denied permission grant"
         try:
             completed = subprocess.run(
                 command,
@@ -85,6 +109,14 @@ Try to maintain your current working directory throughout the session by using a
         if completed.stderr:
             lines.extend(["STDERR:", completed.stderr.rstrip()])
         return "\n".join(lines)
+
+
+def _is_permission_whitelisted(command: str) -> bool:
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return False
+    return bool(parts) and parts[0] in _PERMISSION_WHITELIST
 
 
 def main(command: str) -> int:

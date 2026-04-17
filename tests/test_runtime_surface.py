@@ -273,6 +273,60 @@ def test_repl_tokens_command_uses_new_cached_format(monkeypatch):
     assert any("output=7 (+2 cached" in str(item) for item in outputs)
 
 
+def test_repl_quit_cleans_up_web_browser_sessions(monkeypatch):
+    calls = []
+
+    class FakeReader:
+        rich_console = None
+
+        def __init__(self):
+            self.commands = ["/quit"]
+
+        def _history_render_width(self):
+            return 80
+
+        def print_startup(self, value):
+            return None
+
+        def print(self, value):
+            return None
+
+        def run(self, handler, message=None):
+            for command in self.commands:
+                handler(command)
+
+        def attach_cancel_event(self, _event):
+            return None
+
+        def detach_cancel_event(self, _event):
+            return None
+
+        def finalize_active_output(self):
+            return None
+
+        def request_exit(self):
+            calls.append("request_exit")
+
+    fake_agent = SimpleNamespace(
+        skills=[],
+        llm=SimpleNamespace(
+            total_prompt_uncache_tokens=0,
+            total_prompt_cache_tokens=0,
+            total_completion_uncache_tokens=0,
+            total_completion_cache_tokens=0,
+        ),
+    )
+    fake_config = SimpleNamespace()
+
+    monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
+    monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
+    monkeypatch.setattr(cli, "_cleanup_web_browser_sessions", lambda: calls.append("cleanup"))
+
+    cli._repl(fake_agent, fake_config)
+
+    assert calls == ["cleanup", "request_exit"]
+
+
 def test_footer_uses_input_output_cached_format(tmp_path):
     reader = cli._ReadlineInput(
         str(tmp_path / "history"),

@@ -147,7 +147,7 @@ Use this first when the user gives an address and the chain is unclear.
 Returns a short list of possible chains when multiple networks share the same format.
 # Important Notes
 - if this tool return EVM-compatible chains, call `address_malicious`+`address_balance`+`address_labels`+`address_transfers` for further information.
-- if this tool return other chains, call `address_malicious`+`web_browser`+`web_search` for further information.
+- if this tool return other chains, call `address_malicious`+`web_fetch`+`web_search` for further information.
     """
     parameters = {
         "type": "object",

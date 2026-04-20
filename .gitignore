@@ -1,6 +1,7 @@
 __pycache__/
 tests/__pycache__/
-kittycode/__pycache__/
+kittychain/__pycache__/
+kittychain/rule_engine/schemas/*
 *.py[cod]
 *$py.class
 *.egg-info/

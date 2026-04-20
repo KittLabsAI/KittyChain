@@ -31,8 +31,29 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # type: ignore
+    from llm.provider import _strip_think_blocks  # type: ignore
 else:
     from .base import Tool
+    from ..llm.provider import _strip_think_blocks
+
+
+_SUMMARY_SYSTEM_PROMPT = (
+    "Return a brief summary of the page that directly answers the prompt, "
+    "then add one brief next-step suggestion. "
+    "If the page appears blocked or cannot be meaningfully retrieved because of bot or security detection, "
+    "say so plainly and suggest using the `agent-browser` skill instead."
+)
+
+_SECURITY_MARKERS = (
+    "access denied",
+    "attention required",
+    "captcha",
+    "cf-chl",
+    "cloudflare",
+    "security check",
+    "verify you are human",
+    "bot detection",
+)
 
 
 class WebFetchTool(Tool):
@@ -40,14 +61,24 @@ class WebFetchTool(Tool):
     description = """
 Fetch content from a public URL, extract readable text, and summarize it
 against a prompt. Use this to inspect current web pages or text endpoints.
+
 # Important Notes
 - Always use this after calling other tools like address_malicious to verify their results by fetching relevant web pages.
 - If unable to find information through this tool, use `agent-browser` skill to interact with the web page in a more flexible way.
-- `https://www.oklink.com/` or `https://www.blockchain.com/explorer` for addresses, transactions, and token information by token address.
-- `https://solscan.io/` for Solana addresses and transactions.
-- `https://suivision.xyz/` or `https://suiscan.xyz/mainnet/home` for Sui addresses and transactions.
-- `https://coinmarketcap.com/` for market information.
-- `https://tokenvitals.com/` for token information by token name.
+- ALWAYS try to get relevant counterparties or entities from webpage.
+- After calling this tool, if find relevant addresses, ALWAYS check the 3-5 most frequently interacting addresses with `address_malicious` and `web_fetch`.
+- If timeout, try again with a longer timeout.
+
+# Important Webpage
+- https://www.oklink.com/, https://tokenview.io/, https://blockchair.com/, or https://www.blockchain.com/explorer for multiple public chains.
+- https://etherscan.io/, https://bscscan.com/, https://arbiscan.io/, https://basescan.org/, https://blockscan.com/, or https://www.blockscout.com/ for Ethereum-compatible chains.
+- https://solscan.io/ or https://explorer.solana.com/ for Solana.
+- https://tronscan.org/ for TRON.
+- https://mempool.space/ for Bitcoin.
+- https://www.mintscan.io/ for Cosmos ecosystem chains.
+- https://suiscan.xyz/mainnet/home or https://sui.explorers.guru/ for Sui.
+- https://coinmarketcap.com/ for market information.
+- https://tokenvitals.com/ for token information by token name.
     """
     parameters = {
         "type": "object",
@@ -80,16 +111,18 @@ against a prompt. Use this to inspect current web pages or text endpoints.
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             ]
             headers["User-Agent"] = random.choice(browsers)
-        response = requests.get(normalized, headers=headers, timeout=timeout)
-        response.raise_for_status()
+        try:
+            response = requests.get(normalized, headers=headers, timeout=timeout)
+        except requests.RequestException as exc:
+            return f"Error: {exc}"
+
         content_type = response.headers.get("Content-Type", "").lower()
         text = _extract_text(response.text, content_type)
-        lines = [f"Fetched: {response.url}", f"Status: {response.status_code}", ""]
-        if prompt.strip():
-            lines.append(f"Prompt: {prompt.strip()}")
-            lines.append("")
-        lines.append(text)
-        return "\n".join(lines)
+        if _looks_like_security_detection(response.status_code, text):
+            return _summarize_with_llm(self._parent_agent, response.url, response.status_code, prompt, text)
+
+        response.raise_for_status()
+        return _summarize_with_llm(self._parent_agent, response.url, response.status_code, prompt, text)
 
 
 def _normalize_url(url: str) -> str:
@@ -114,6 +147,45 @@ def _extract_text(body: str, content_type: str) -> str:
             tag.decompose()
         return "\n".join(line for line in soup.get_text("\n").splitlines() if line.strip())
     return body
+
+
+def _looks_like_security_detection(status_code: int, page_text: str) -> bool:
+    lowered = (page_text or "").lower()
+    if status_code in {403, 429, 503}:
+        return True
+    return any(marker in lowered for marker in _SECURITY_MARKERS)
+
+
+def _summarize_with_llm(agent, url: str, status_code: int | str, prompt: str, page_text: str) -> str:
+    llm = getattr(agent, "llm", None)
+    if llm is None or not hasattr(llm, "complete"):
+        lines = [f"Fetched: {url}", f"Status: {status_code}", ""]
+        if prompt.strip():
+            lines.append(f"Prompt: {prompt.strip()}")
+            lines.append("")
+        lines.append(page_text.strip())
+        return "\n".join(lines)
+
+    worker = llm.clone() if hasattr(llm, "clone") else llm
+    message = {
+        "role": "user",
+        "content": (
+            f"Prompt:\n{prompt.strip() or 'Summarize the page content.'}\n\n"
+            f"Fetched URL: {url}\n"
+            f"Status: {status_code}\n\n"
+            f"Page content:\n{page_text.strip()}"
+        ),
+    }
+    response = worker.complete([message], system=_SUMMARY_SYSTEM_PROMPT)
+    summary = _strip_think_blocks((response.content or "").strip())
+    if summary:
+        return summary
+    lines = [f"Fetched: {url}", f"Status: {status_code}", ""]
+    if prompt.strip():
+        lines.append(f"Prompt: {prompt.strip()}")
+        lines.append("")
+    lines.append(page_text.strip())
+    return "\n".join(lines)
 
 
 def main(url: str) -> int:

@@ -138,7 +138,7 @@ Look up Chainbase token top holders for a token contract on a specific chain.
 Returns top holders and holder amounts for the token contract.
 # Important Notes
 - After calling this tool, check the top holders with address_malicious.
-- After calling this tool, always use web_browser tool to verify the holder information.
+- After calling this tool, always use web_fetch to verify the holder information.
     """
     parameters = {
         "type": "object",

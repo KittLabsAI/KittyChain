@@ -60,16 +60,6 @@ def test_system_prompt_mentions_optional_system_reminder_tag_and_user_prompt_inc
     assert "first- and second-level counterparty address information" in user
 
 
-def test_user_prompt_uses_copilot_specific_deep_mode_reminder():
-    prompt = prompt_builder.user_prompt("hello", mode="deep", prompt_mode="copilot")
-
-    assert "<system-reminder>" in prompt
-    assert "Deep investigation mode is enabled" in prompt
-    assert "generate a new rule_details" in prompt
-    assert "strategy_simulation" in prompt
-    assert "detailed report" in prompt
-
-
 def test_system_prompt_describes_onchain_risk_analysis_role():
     tool = SimpleNamespace(name="demo_tool", description="Demo tool")
 
@@ -89,19 +79,6 @@ def test_system_prompt_code_mode_matches_kittycode_role_and_rules():
     assert "# Rules" in system
     assert "1. Read before edit." in system
     assert "8. Ask when unsure." in system
-
-
-def test_system_prompt_copilot_mode_mentions_strategy_automation_workflow():
-    tool = SimpleNamespace(name="demo_tool", description="Demo tool")
-
-    system = prompt_builder.system_prompt([tool], mode="copilot")
-
-    assert "risk strategy automation" in system.lower()
-    assert "Bad and strategy result=pass and reason code is empty" in system
-    assert "Good and (strategy result=review/reject or reason code is not empty)" in system
-    assert "use read_flow" in system
-    assert "read_node, read_rule, read_hits" in system
-    assert "will not create more misses or false positives" in system
 
 
 def test_system_prompt_includes_onchain_lookup_rules():
@@ -168,11 +145,11 @@ def test_agent_initializes_system_prompt_with_loaded_skills(monkeypatch):
     monkeypatch.setattr(agent_module, "load_skills", lambda force_reload=True: loaded_skills)
     monkeypatch.setattr(agent_module, "system_prompt", fake_system_prompt)
 
-    agent = agent_module.Agent(llm=DummyLLM(), tools=[], prompt_mode="copilot")
+    agent = agent_module.Agent(llm=DummyLLM(), tools=[], prompt_mode="chain")
 
     assert agent.skills == loaded_skills
     assert captured["skills"] == loaded_skills
-    assert captured["mode"] == "copilot"
+    assert captured["mode"] == "chain"
     assert agent._system == "SYSTEM"
 
 
@@ -273,7 +250,7 @@ def test_repl_tokens_command_uses_new_cached_format(monkeypatch):
     assert any("output=7 (+2 cached" in str(item) for item in outputs)
 
 
-def test_repl_quit_cleans_up_web_browser_sessions(monkeypatch):
+def test_repl_quit_requests_exit(monkeypatch):
     calls = []
 
     class FakeReader:
@@ -320,11 +297,10 @@ def test_repl_quit_cleans_up_web_browser_sessions(monkeypatch):
 
     monkeypatch.setattr(cli, "_build_input_reader", lambda *args, **kwargs: FakeReader())
     monkeypatch.setattr(cli, "_render_startup_header", lambda config, width=None: "startup")
-    monkeypatch.setattr(cli, "_cleanup_web_browser_sessions", lambda: calls.append("cleanup"))
 
     cli._repl(fake_agent, fake_config)
 
-    assert calls == ["cleanup", "request_exit"]
+    assert calls == ["request_exit"]
 
 
 def test_footer_uses_input_output_cached_format(tmp_path):
@@ -371,7 +347,6 @@ def test_show_help_mentions_copy_mode_and_escape_interrupt():
     assert "Esc" in rendered
     assert "interrupt" in rendered.lower()
     assert "--chain" in rendered
-    assert "--copilot" in rendered
     assert "--code" in rendered
 
 
@@ -379,11 +354,9 @@ def test_render_startup_header_uses_mode_specific_branding():
     config = SimpleNamespace(model="gpt-test")
 
     chain = cli._render_startup_header(config, width=120, app_name="KittyChain")
-    copilot = cli._render_startup_header(config, width=120, app_name="KittyCopilot")
     code = cli._render_startup_header(config, width=120, app_name="KittyCode")
 
     assert "KittyChain v" in chain.plain
-    assert "KittyCopilot v" in copilot.plain
     assert "KittyCode v" in code.plain
 
 
@@ -395,12 +368,15 @@ def test_parse_args_defaults_to_chain_mode(monkeypatch):
     assert args.tool_mode == "chain"
 
 
-def test_parse_args_accepts_copilot_mode(monkeypatch):
+def test_parse_args_rejects_copilot_mode(monkeypatch):
     monkeypatch.setattr(cli.sys, "argv", ["kittychain", "--copilot"])
 
-    args = cli._parse_args()
-
-    assert args.tool_mode == "copilot"
+    try:
+        cli._parse_args()
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("expected --copilot to be rejected")
 
 
 def test_parse_args_accepts_code_mode(monkeypatch):
@@ -687,7 +663,7 @@ def test_history_style_does_not_shift_gray_tool_style_onto_following_blank_line(
     assert metadata[assistant_index].get("base_style") == "class:history.assistant"
 
 
-def test_repl_streams_web_browser_tool_output_only(monkeypatch):
+def test_repl_streams_web_fetch_tool_output_only(monkeypatch):
     outputs = []
 
     class FakeReader:
@@ -749,8 +725,8 @@ def test_repl_streams_web_browser_tool_output_only(monkeypatch):
         on_tool_output=None,
         **kwargs,
     ):
-        on_tool("web_browser", {"url": "https://example.com", "prompt": "scan"})
-        on_tool_output("web_browser", "Browser summary")
+        on_tool("web_fetch", {"url": "https://example.com", "prompt": "scan"})
+        on_tool_output("web_fetch", "Browser summary")
         on_tool("bash", {"command": "pwd"})
         on_tool_output("bash", "shell output")
         return "", False, agent
@@ -833,7 +809,7 @@ def test_repl_streams_ask_user_tool_output(monkeypatch):
     assert ("write_raw", "User answers:\n- Mode: proceed", "tool", "plain") in outputs
 
 
-def test_repl_truncates_web_browser_tool_output_to_first_five_lines(monkeypatch):
+def test_repl_truncates_web_fetch_tool_output_to_first_five_lines(monkeypatch):
     outputs = []
 
     class FakeReader:
@@ -892,8 +868,8 @@ def test_repl_truncates_web_browser_tool_output_to_first_five_lines(monkeypatch)
         on_tool_output=None,
         **kwargs,
     ):
-        on_tool("web_browser", {"url": "https://example.com", "prompt": "scan"})
-        on_tool_output("web_browser", "1\n2\n3\n4\n5\n6\n7")
+        on_tool("web_fetch", {"url": "https://example.com", "prompt": "scan"})
+        on_tool_output("web_fetch", "1\n2\n3\n4\n5\n6\n7")
         return "", False, agent
 
     monkeypatch.setattr(cli, "_run_agent_with_escape_interrupt", fake_run_agent_with_escape_interrupt)
@@ -1183,7 +1159,7 @@ def test_repl_save_command_emits_plain_system_messages_without_rich_markup(monke
     assert all("[" not in value and "]" not in value for value in printed)
 
 
-def test_agent_emits_web_browser_result_to_tool_output_callback():
+def test_agent_emits_web_fetch_result_to_tool_output_callback():
     class FakeLLM:
         def __init__(self):
             self.calls = 0
@@ -1193,12 +1169,12 @@ def test_agent_emits_web_browser_result_to_tool_output_callback():
             if self.calls == 1:
                 return provider.LLMResponse(
                     content="",
-                    tool_calls=[ToolCall(id="tool-1", name="web_browser", arguments={"url": "https://example.com"})],
+                    tool_calls=[ToolCall(id="tool-1", name="web_fetch", arguments={"url": "https://example.com"})],
                 )
             return provider.LLMResponse(content="done")
 
     class FakeTool:
-        name = "web_browser"
+        name = "web_fetch"
         description = "Fetches browser content"
         parameters = {}
 
@@ -1220,7 +1196,7 @@ def test_agent_emits_web_browser_result_to_tool_output_callback():
     response = agent.chat("scan", on_tool_output=lambda name, text: seen.append((name, text)))
 
     assert response == "done"
-    assert seen == [("web_browser", "Browser summary")]
+    assert seen == [("web_fetch", "Browser summary")]
 
 
 def test_agent_emits_write_report_result_to_tool_output_callback():

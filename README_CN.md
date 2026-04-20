@@ -26,11 +26,17 @@ kittychain --config
 kittychain
 ```
 
+如果是做编码任务，可以启动面向开发的工具集：
+
+```bash
+kittychain --code
+```
+
 ## 功能特点与链上分析能力
 
 - 轻量级终端 agent loop，同时支持交互式 REPL 和单次命令模式。
 - 支持 OpenAI 兼容接口与 Anthropic 兼容接口。
-- 内置 Shell 执行、文件读取与编辑、网页搜索、网页抓取、TODO 跟踪和 skill 加载等本地工具。
+- 内置 Shell 执行、文件读取与编辑、网页搜索、带 LLM 摘要的网页抓取、TODO 跟踪和 skill 加载等本地工具。
 - 支持通过斜杠命令切换模型、保存会话、压缩上下文和查看已加载 skills。
 - 支持会话持久化与任务中断，适合持续性的分析流程。
 
@@ -51,6 +57,12 @@ KittyChain 同时内置了常见链上分析能力，可直接用于日常调查
 
 ```bash
 kittychain
+```
+
+启动编码模式：
+
+```bash
+kittychain --code
 ```
 
 单次执行一个提示词并退出：
@@ -78,6 +90,11 @@ python -m kittychain
 ```
 
 当 CLI 正在执行时，可以按 `Esc` 在下一处安全检查点中断当前任务。
+
+## 启动模式
+
+- `kittychain` 或 `kittychain --chain`：加载默认的链上分析工具集。
+- `kittychain --code`：加载面向软件工程任务的编码工具集。
 
 ## 交互命令
 

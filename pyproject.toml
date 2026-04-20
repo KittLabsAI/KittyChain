@@ -17,6 +17,7 @@ dependencies = [
     "anthropic>=0.84.0",
     "beautifulsoup4>=4.12",
     "certifi>=2024.0.0",
+    "Flask>=3.1",
     "dune-client>=1.10.0",
     "goplus>=0.2.5",
     "openai>=1.0",

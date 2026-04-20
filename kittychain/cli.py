@@ -87,18 +87,9 @@ _INPUT_PROMPT_LABEL = ">"
 _AUTHOR_NAME = "Jimmy Ye"
 
 
-def _cleanup_web_browser_sessions() -> None:
-    try:
-        from .tools.web_browser import cleanup_all_sessions
-    except Exception:
-        return
-    cleanup_all_sessions()
-
-
 def _app_name_for_tool_mode(tool_mode: str) -> str:
     return {
         "chain": "KittyChain",
-        "copilot": "KittyCopilot",
         "code": "KittyCode",
     }.get(tool_mode, "KittyChain")
 
@@ -263,13 +254,6 @@ def _parse_args():
         action="store_const",
         const="chain",
         help="Load the full on-chain analysis toolset (default)",
-    )
-    tool_mode_group.add_argument(
-        "--copilot",
-        dest="tool_mode",
-        action="store_const",
-        const="copilot",
-        help="Load the risk-strategy copilot toolset for workflow and rule analysis",
     )
     tool_mode_group.add_argument(
         "--code",
@@ -454,7 +438,6 @@ def _repl(agent: Agent, config: Config):
             return
 
         if user_input == "/quit":
-            _cleanup_web_browser_sessions()
             request_exit = getattr(input_reader, "request_exit", None)
             if callable(request_exit):
                 request_exit()
@@ -640,7 +623,6 @@ def _show_help(io=None):
             "\n"
             "[bold]Startup Flags:[/bold]\n"
             "  --chain        Load the full on-chain analysis toolset (default)\n"
-            "  --copilot      Load the risk-strategy copilot toolset for workflow and rule analysis\n"
             "  --code         Load the coding-focused toolset for software engineering tasks\n"
             "\n"
             "[bold]Shortcuts:[/bold]\n"
@@ -1115,7 +1097,7 @@ def _should_hide_tool_call(name: str) -> bool:
 def _tool_output_display_text(name: str, text: str) -> str:
     if name in {"todo_write", "brief"}:
         return text
-    if name in {"web_browser", "ask_user", "write_report"}:
+    if name in {"web_fetch", "ask_user", "write_report"}:
         return _truncate_tool_output(text)
     return ""
 

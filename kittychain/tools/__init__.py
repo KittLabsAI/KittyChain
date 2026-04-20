@@ -20,11 +20,6 @@ from .edit import EditTool
 from .glob import GlobTool
 from .grep import GrepTool
 from .read import ReadTool
-from .read_flow import ReadFlowTool
-from .read_hits import ReadHitsTool
-from .read_node import ReadNodeTool
-from .read_rule import ReadRuleTool
-from .strategy_simulation import StrategySimulationTool
 from .social_search import SocialSearchTool
 from .skill import SkillTool
 from .token_holders import TokenHoldersTool
@@ -33,7 +28,7 @@ from .token_market_data import TokenMarketDataTool
 from .token_search import TokenSearchTool
 from .token_security import TokenSecurityTool
 from .todo_write import TodoWriteTool
-from .web_browser import WebBrowserTool
+from .web_fetch import WebFetchTool
 from .web_search import WebSearchTool
 from .write import WriteTool
 from .write_report import WriteReportTool
@@ -46,7 +41,7 @@ _TOOL_TYPES = [
     GrepTool,
     AgentTool,
     SkillTool,
-    WebBrowserTool,
+    WebFetchTool,
     WebSearchTool,
     WriteReportTool,
     TodoWriteTool,
@@ -80,14 +75,6 @@ _CHAIN_ONLY_TOOL_NAMES = {
     "write_report",
 }
 
-_COPILOT_ONLY_TOOL_TYPES = [
-    ReadFlowTool,
-    ReadNodeTool,
-    ReadRuleTool,
-    ReadHitsTool,
-    StrategySimulationTool,
-]
-
 _CODE_TOOL_TYPES = [
     AgentTool,
     AskUserTool,
@@ -99,7 +86,7 @@ _CODE_TOOL_TYPES = [
     ReadTool,
     SkillTool,
     TodoWriteTool,
-    WebBrowserTool,
+    WebFetchTool,
     WebSearchTool,
     WriteTool,
 ]
@@ -107,10 +94,7 @@ _CODE_TOOL_TYPES = [
 
 def create_tool_instances(tool_mode: str = "chain"):
     tool_types = list(_TOOL_TYPES)
-    if tool_mode == "copilot":
-        tool_types = [tool_type for tool_type in tool_types if tool_type.name not in _CHAIN_ONLY_TOOL_NAMES]
-        tool_types.extend(_COPILOT_ONLY_TOOL_TYPES)
-    elif tool_mode == "code":
+    if tool_mode == "code":
         tool_types = list(_CODE_TOOL_TYPES)
     if not Config.from_file().apis.coingecko_api_key:
         tool_types = [tool_type for tool_type in tool_types if tool_type not in (TokenDataTool, TokenMarketDataTool)]
@@ -144,11 +128,6 @@ __all__ = [
     "GlobTool",
     "GrepTool",
     "ReadTool",
-    "ReadFlowTool",
-    "ReadHitsTool",
-    "ReadNodeTool",
-    "ReadRuleTool",
-    "StrategySimulationTool",
     "SocialSearchTool",
     "SkillTool",
     "TokenHoldersTool",
@@ -157,7 +136,7 @@ __all__ = [
     "TokenSecurityTool",
     "TodoWriteTool",
     "TokenDataTool",
-    "WebBrowserTool",
+    "WebFetchTool",
     "WebSearchTool",
     "WriteTool",
     "WriteReportTool",

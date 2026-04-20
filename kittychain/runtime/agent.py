@@ -388,7 +388,7 @@ class Agent:
             if cancel_event is not None and "cancel_event" in parameters:
                 execute_kwargs["cancel_event"] = cancel_event
             result = tool.execute(**execute_kwargs)
-            if on_output is not None and tool_call.name in {"web_browser", "ask_user", "write_report", "todo_write", "brief"} and not streamed_output and result:
+            if on_output is not None and tool_call.name in {"web_fetch", "ask_user", "write_report", "todo_write", "brief"} and not streamed_output and result:
                 on_output(tool_call.name, result)
             return result
         except TypeError as exc:

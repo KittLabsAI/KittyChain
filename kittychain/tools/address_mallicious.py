@@ -136,8 +136,8 @@ class AddressMaliciousTool(Tool):
 Check whether an address has malicious or risky signals using GoPlus.
 Returns flags for various risk categories including phishing, malware, mixing, sanctions, and more.
 # Important Notes
-- After calling this tool, always use web_browser, address_labels, address_balance, and address_transfers to verify the result.
-- Using web_browser can provide additional insights such as token risk, token metadata, and related addresses.
+- After calling this tool, always use web_fetch, address_labels, address_balance, and address_transfers to verify the result.
+- Using web_fetch can provide additional insights such as token risk, token metadata, and related addresses.
     """
     parameters = {
         "type": "object",

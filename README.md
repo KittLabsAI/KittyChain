@@ -26,11 +26,17 @@ kittychain --config
 kittychain
 ```
 
+For coding work, start the coding-focused toolset:
+
+```bash
+kittychain --code
+```
+
 ## Features And Onchain Capabilities
 
 - Lightweight terminal agent loop with an interactive REPL and one-shot prompt mode.
 - Support for OpenAI-compatible and Anthropic-compatible model interfaces.
-- Built-in local tools for shell execution, file reading and editing, web search, web browser fetching, TODO tracking, and skill loading.
+- Built-in local tools for shell execution, file reading and editing, web search, web fetching with LLM summaries, TODO tracking, and skill loading.
 - Slash-command driven workflow for switching models, saving sessions, compacting context, and browsing loaded skills.
 - Session persistence and interruption support for longer investigative workflows.
 
@@ -51,6 +57,12 @@ Run the interactive terminal UI:
 
 ```bash
 kittychain
+```
+
+Run the coding-focused mode:
+
+```bash
+kittychain --code
 ```
 
 Run a one-shot prompt and exit:
@@ -78,6 +90,11 @@ python -m kittychain
 ```
 
 When the CLI is busy, press `Esc` to interrupt the current run at the next safe checkpoint.
+
+## Startup Modes
+
+- `kittychain` or `kittychain --chain`: load the default on-chain investigation toolset.
+- `kittychain --code`: load the coding-focused toolset for software engineering tasks.
 
 ## Interactive Commands
 

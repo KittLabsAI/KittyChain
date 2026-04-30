@@ -387,6 +387,22 @@ def test_parse_args_accepts_code_mode(monkeypatch):
     assert args.tool_mode == "code"
 
 
+def test_run_once_flushes_final_streamed_tokens(monkeypatch):
+    outputs = []
+
+    class FakeAgent:
+        def chat(self, prompt, on_token=None, on_tool=None, mode=None):
+            on_token("hello")
+            on_token(" world")
+            return "hello world"
+
+    monkeypatch.setattr(cli, "_emit_raw_terminal", outputs.append)
+
+    cli._run_once(FakeAgent(), "say hello")
+
+    assert "".join(outputs) == "hello world"
+
+
 def test_parse_args_rejects_legacy_internal_mode(monkeypatch):
     monkeypatch.setattr(cli.sys, "argv", ["kittychain", "--internal"])
 

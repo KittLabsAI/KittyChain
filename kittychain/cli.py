@@ -1037,7 +1037,8 @@ def _render_to_plain_text(value, width: int = 80) -> str:
     )
     with render_console.capture() as capture:
         render_console.print(value)
-    return capture.get().rstrip("\n")
+    rendered = capture.get().rstrip("\n")
+    return "\n".join(line.rstrip() for line in rendered.split("\n"))
 
 
 def _normalize_history_value(value):
@@ -1257,8 +1258,10 @@ class _MarkdownStreamRenderer:
         self._last_emit_at = current_time
 
     def finish(self) -> None:
-        if self._buffer and self._on_finish is not None:
-            self._on_finish()
+        if self._buffer:
+            self._render_current()
+            if self._on_finish is not None:
+                self._on_finish()
         self._reset()
 
     def _render_current(self) -> None:

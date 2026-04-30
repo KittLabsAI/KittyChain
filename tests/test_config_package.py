@@ -31,14 +31,7 @@ def test_config_round_trip_persists_models_and_apis(tmp_path: Path):
                 base_url="https://example.invalid/v1",
             )
         ],
-        apis=ApiConfig(
-            dune_api_key="dune",
-            goplus_api_key="goplus-key",
-            goplus_api_secret="goplus-secret",
-            alchemy_api_key="alchemy",
-            chainbase_api_key="chainbase",
-            coingecko_api_key="cg-key",
-        ),
+        apis=ApiConfig(kittychain_api_key="kitty-key"),
     )
 
     original.write(path)
@@ -50,13 +43,23 @@ def test_config_round_trip_persists_models_and_apis(tmp_path: Path):
     assert loaded.model == "gpt-4.1"
 
 
-def test_config_round_trip_includes_coingecko_api_key(tmp_path: Path):
+def test_config_round_trip_persists_only_kittychain_api_key(tmp_path: Path):
     path = tmp_path / "config.json"
 
-    Config(apis=ApiConfig(coingecko_api_key="cg-key")).write(path)
+    Config(
+        apis=ApiConfig(
+            kittychain_api_key="kitty-key",
+            dune_api_key="dune",
+            coingecko_api_key="cg-key",
+            okx_api_key="okx-key",
+        )
+    ).write(path)
     loaded = Config.from_file(path)
 
-    assert loaded.apis.coingecko_api_key == "cg-key"
+    assert loaded.apis.kittychain_api_key == "kitty-key"
+    assert loaded.apis.dune_api_key == ""
+    assert loaded.apis.coingecko_api_key == ""
+    assert loaded.apis.okx_api_key == ""
 
 
 def test_config_from_old_file_without_apis_uses_empty_api_defaults(tmp_path: Path):

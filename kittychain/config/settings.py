@@ -8,12 +8,18 @@ from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".kittychain" / "config.json"
 API_FIELDS = (
+    "kittychain_api_key",
+)
+LEGACY_API_FIELDS = (
     "dune_api_key",
     "goplus_api_key",
     "goplus_api_secret",
     "alchemy_api_key",
     "chainbase_api_key",
     "coingecko_api_key",
+    "okx_api_key",
+    "okx_secret_key",
+    "okx_passphrase",
 )
 
 
@@ -55,12 +61,16 @@ class StoredModelConfig:
 
 @dataclass(frozen=True)
 class ApiConfig:
+    kittychain_api_key: str = ""
     dune_api_key: str = ""
     goplus_api_key: str = ""
     goplus_api_secret: str = ""
     alchemy_api_key: str = ""
     chainbase_api_key: str = ""
     coingecko_api_key: str = ""
+    okx_api_key: str = ""
+    okx_secret_key: str = ""
+    okx_passphrase: str = ""
 
     @classmethod
     def from_dict(cls, raw: object) -> "ApiConfig":
@@ -69,7 +79,7 @@ class ApiConfig:
         if not isinstance(raw, dict):
             raise ValueError("apis must be an object")
         payload = {}
-        for field_name in API_FIELDS:
+        for field_name in (*API_FIELDS, *LEGACY_API_FIELDS):
             value = raw.get(field_name, "")
             payload[field_name] = "" if value in (None, "") else str(value)
         return cls(**payload)

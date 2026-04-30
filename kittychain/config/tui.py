@@ -11,9 +11,9 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import HSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl
-from prompt_toolkit.shortcuts import button_dialog, input_dialog, message_dialog, radiolist_dialog
-from prompt_toolkit.widgets import Box, Button, Dialog, Label, TextArea
+from prompt_toolkit.shortcuts import input_dialog, message_dialog, radiolist_dialog
 from prompt_toolkit.styles import Style
+from prompt_toolkit.widgets import Dialog
 
 from .presets import PROVIDER_PRESETS, get_provider_preset
 from .settings import CONFIG_PATH, ApiConfig, Config, StoredModelConfig
@@ -51,6 +51,20 @@ class ConfigTUIState:
     temperature: float = _DEFAULT_TEMPERATURE
     max_context: int = _DEFAULT_MAX_CONTEXT
     focus_section: str = "models"
+    selected_model_index: int = 0
+
+
+_FOCUS_ORDER = (
+    "models",
+    "add_model",
+    "delete_model",
+    "max_tokens",
+    "temperature",
+    "max_context",
+    "api_key",
+    "save",
+    "cancel",
+)
 
 
 def _load_raw_defaults(config_path: Path) -> tuple[int, float, int]:
@@ -131,19 +145,20 @@ def build_model_from_provider(
     )
 
 
-def render_model_list(models: list[ConfigTUIModel]) -> str:
+def render_model_list(models: list[ConfigTUIModel], selected_index: int = 0) -> str:
     provider_width = max(len("Provider"), *(len(model.provider) for model in models)) if models else len("Provider")
     model_width = max(len("Model"), *(len(model.model_name) for model in models)) if models else len("Model")
     base_width = max(len("Base URL"), *(len(model.base_url) for model in models)) if models else len("Base URL")
 
-    header = f"{'Provider':<{provider_width}} | {'Model':<{model_width}} | {'Base URL':<{base_width}}"
-    divider = f"{'-' * provider_width}-+-{'-' * model_width}-+-{'-' * base_width}"
+    header = f"   {'Provider':<{provider_width}} | {'Model':<{model_width}} | {'Base URL':<{base_width}}"
+    divider = f"   {'-' * provider_width}-+-{'-' * model_width}-+-{'-' * base_width}"
     if not models:
         return "\n".join([header, divider, "(no models configured yet)"])
 
     rows = [
-        f"{model.provider:<{provider_width}} | {model.model_name:<{model_width}} | {model.base_url:<{base_width}}"
-        for model in models
+        f"{'>' if index == selected_index else ' '}  {model.provider:<{provider_width}} | "
+        f"{model.model_name:<{model_width}} | {model.base_url:<{base_width}}"
+        for index, model in enumerate(models)
     ]
     return "\n".join([header, divider, *rows])
 
@@ -157,16 +172,7 @@ def mask_secret(value: str) -> str:
 
 
 def render_api_summary(apis: ApiConfig) -> str:
-    return "\n".join(
-        [
-            f"Dune API Key: {mask_secret(apis.dune_api_key)}",
-            f"GoPlus API Key: {mask_secret(apis.goplus_api_key)}",
-            f"GoPlus API Secret: {mask_secret(apis.goplus_api_secret)}",
-            f"Alchemy API Key: {mask_secret(apis.alchemy_api_key)}",
-            f"Chainbase API Key: {mask_secret(apis.chainbase_api_key)}",
-            f"CoinGecko API Key: {mask_secret(apis.coingecko_api_key)}",
-        ]
-    )
+    return f"KITTYCHAIN_API_KEY: {mask_secret(apis.kittychain_api_key)}"
 
 
 def write_config_tui_state(state: ConfigTUIState, config_path: Path | str | None = None) -> None:
@@ -190,7 +196,7 @@ def write_config_tui_state(state: ConfigTUIState, config_path: Path | str | None
             )
             for model in state.models
         ],
-        apis=state.apis,
+        apis=ApiConfig(kittychain_api_key=state.apis.kittychain_api_key),
     )
     config.write(path)
 
@@ -242,10 +248,15 @@ def _edit_model(existing: ConfigTUIModel | None = None) -> ConfigTUIModel | None
     )
 
 
-def _select_model_index(models: list[ConfigTUIModel]) -> int | None:
+def _select_model_index(
+    models: list[ConfigTUIModel],
+    *,
+    title: str = "Edit Model",
+    text: str = "Choose an existing model to edit.",
+) -> int | None:
     if not models:
         message_dialog(
-            title="Edit Model",
+            title=title,
             text="No configured models yet. Add one first.",
         ).run()
         return None
@@ -255,91 +266,102 @@ def _select_model_index(models: list[ConfigTUIModel]) -> int | None:
         for index, model in enumerate(models)
     ]
     return radiolist_dialog(
-        title="Edit Model",
-        text="Choose an existing model to edit.",
+        title=title,
+        text=text,
         values=values,
         default=values[0][0],
     ).run()
 
 
-def _prompt_api_form(title: str, fields: tuple[str, ...], defaults: tuple[str, ...]) -> tuple[str, ...] | None:
-    values = list(defaults)
-    editors = [TextArea(text=default, multiline=False) for default in defaults]
-    result: dict[str, tuple[str, ...] | None] = {"value": None}
-
-    def _save() -> None:
-        result["value"] = tuple(editor.text for editor in editors)
-        application.exit()
-
-    def _cancel() -> None:
-        result["value"] = None
-        application.exit()
-
-    body_children = []
-    for label, editor in zip(fields, editors):
-        body_children.append(Label(text=label))
-        body_children.append(editor)
-
-    dialog = Dialog(
-        title=title,
-        body=HSplit(body_children, padding=1),
-        buttons=[Button(text="Save", handler=_save), Button(text="Cancel", handler=_cancel)],
-        with_background=True,
-    )
-    application = Application(layout=Layout(dialog), full_screen=False, style=_APP_STYLE)
-    application.run()
-    return result["value"]
-
-
-def _edit_apis(existing: ApiConfig, prompt_form=_prompt_api_form) -> ApiConfig | None:
-    fields = (
-        "Dune API Key",
-        "GoPlus API Key",
-        "GoPlus API Secret",
-        "Alchemy API Key",
-        "Chainbase API Key",
-        "CoinGecko API Key (Optional)",
-    )
-    defaults = (
-        existing.dune_api_key,
-        existing.goplus_api_key,
-        existing.goplus_api_secret,
-        existing.alchemy_api_key,
-        existing.chainbase_api_key,
-        existing.coingecko_api_key,
-    )
-    values = prompt_form("API Config", fields, defaults)
-    if values is None:
+def _edit_apis(existing: ApiConfig, prompt_text=_prompt_text) -> ApiConfig | None:
+    api_key = prompt_text("API Config", "KITTYCHAIN_API_KEY", existing.kittychain_api_key)
+    if api_key is None:
         return None
-    dune_api_key, goplus_api_key, goplus_api_secret, alchemy_api_key, chainbase_api_key, coingecko_api_key = values
-    return ApiConfig(
-        dune_api_key=dune_api_key,
-        goplus_api_key=goplus_api_key,
-        goplus_api_secret=goplus_api_secret,
-        alchemy_api_key=alchemy_api_key,
-        chainbase_api_key=chainbase_api_key,
-        coingecko_api_key=coingecko_api_key,
-    )
+    return ApiConfig(kittychain_api_key=api_key)
+
+
+def _focus_marker(state: ConfigTUIState, section: str, label: str) -> str:
+    return f"> {label}" if state.focus_section == section else f"  {label}"
+
+
+def _focus_button(state: ConfigTUIState, section: str, label: str) -> str:
+    return f">{label}<" if state.focus_section == section else label
 
 
 def _build_main_screen_text(state: ConfigTUIState) -> str:
     lines: list[str] = []
     if state.issue:
         lines.extend([state.issue, ""])
-    model_title = ">> Models" if state.focus_section == "models" else "   Models"
-    api_title = ">> APIs" if state.focus_section == "apis" else "   APIs"
     lines.extend(
         [
-            model_title,
-            render_model_list(state.models),
+            "Models",
+            render_model_list(state.models, state.selected_model_index),
             "",
-            api_title,
-            render_api_summary(state.apis),
+            f"{_focus_button(state, 'add_model', '[Add]')} {_focus_button(state, 'delete_model', '[Delete]')}",
             "",
-            "Tab: switch section | Enter: edit active section | a: add model | e: edit | Ctrl-S: save | q: quit",
+            "Model Global Settings",
+            _focus_marker(state, "max_tokens", f"max_tokens: {state.max_tokens}"),
+            _focus_marker(state, "temperature", f"temperature: {state.temperature}"),
+            _focus_marker(state, "max_context", f"max_context: {state.max_context}"),
+            "",
+            "API KEY",
+            _focus_marker(state, "api_key", render_api_summary(state.apis)),
+            "",
+            f"{_focus_button(state, 'save', '[Save]')} {_focus_button(state, 'cancel', '[Cancel]')}",
+            "",
+            "Up/Down: select model | Enter: select | e: edit | Ctrl-S: save | q: quit",
         ]
     )
     return "\n".join(lines)
+
+
+def _focus_relative(state: ConfigTUIState, offset: int) -> None:
+    current = _FOCUS_ORDER.index(state.focus_section) if state.focus_section in _FOCUS_ORDER else 0
+    state.focus_section = _FOCUS_ORDER[(current + offset) % len(_FOCUS_ORDER)]
+
+
+def _move_focus_down(state: ConfigTUIState) -> None:
+    if state.focus_section == "models" and state.models:
+        if state.selected_model_index < len(state.models) - 1:
+            state.selected_model_index += 1
+            return
+        state.focus_section = "add_model"
+        return
+    _focus_relative(state, 1)
+
+
+def _move_focus_up(state: ConfigTUIState) -> None:
+    if state.focus_section == "models" and state.models and state.selected_model_index > 0:
+        state.selected_model_index -= 1
+        return
+    _focus_relative(state, -1)
+
+
+def _selected_model_index(state: ConfigTUIState) -> int | None:
+    if not state.models:
+        return None
+    state.selected_model_index = max(0, min(state.selected_model_index, len(state.models) - 1))
+    return state.selected_model_index
+
+
+def _edit_number_setting(
+    state: ConfigTUIState,
+    attr: str,
+    label: str,
+    cast,
+    *,
+    prompt_text=_prompt_text,
+) -> bool:
+    raw_value = prompt_text("Model Global Settings", label, str(getattr(state, attr)))
+    if raw_value is None:
+        return False
+    try:
+        setattr(state, attr, cast(raw_value))
+    except ValueError:
+        state.issue = f"{label} must be a valid {cast.__name__}"
+        return False
+    state.issue = None
+    return True
 
 
 def _apply_post_action(
@@ -349,41 +371,77 @@ def _apply_post_action(
     edit_model=_edit_model,
     edit_apis=_edit_apis,
     select_model_index=_select_model_index,
+    prompt_text=_prompt_text,
 ) -> bool:
     if action == "add_model":
         updated = edit_model()
         if updated is None:
             return False
         state.models.append(updated)
+        state.selected_model_index = len(state.models) - 1
         state.issue = None
         return True
 
-    if action == "edit_models":
-        if state.models:
-            index = select_model_index(state.models)
-            if index is None:
-                return False
-            updated = edit_model(state.models[index])
+    if action in {"edit_model", "edit_models"}:
+        index = _selected_model_index(state)
+        if index is None:
+            updated = edit_model()
             if updated is None:
                 return False
-            state.models[index] = updated
+            state.models.append(updated)
+            state.selected_model_index = 0
             state.issue = None
             return True
 
-        updated = edit_model()
+        updated = edit_model(state.models[index])
         if updated is None:
             return False
-        state.models.append(updated)
+        state.models[index] = updated
         state.issue = None
         return True
 
-    if action == "edit_apis":
+    if action == "activate_model":
+        index = _selected_model_index(state)
+        if index is None:
+            return False
+        selected = state.models.pop(index)
+        state.models.insert(0, selected)
+        state.selected_model_index = 0
+        state.issue = None
+        return True
+
+    if action == "delete_model":
+        try:
+            index = select_model_index(
+                state.models,
+                title="Delete Model",
+                text="Choose an existing model to delete.",
+            )
+        except TypeError:
+            index = select_model_index(state.models)
+        if index is None:
+            return False
+        del state.models[index]
+        state.selected_model_index = max(0, min(index, len(state.models) - 1))
+        state.issue = None
+        return True
+
+    if action in {"edit_api_key", "edit_apis"}:
         updated = edit_apis(state.apis)
         if updated is None:
             return False
         state.apis = updated
         state.issue = None
         return True
+
+    if action == "edit_max_tokens":
+        return _edit_number_setting(state, "max_tokens", "max_tokens", int, prompt_text=prompt_text)
+
+    if action == "edit_temperature":
+        return _edit_number_setting(state, "temperature", "temperature", float, prompt_text=prompt_text)
+
+    if action == "edit_max_context":
+        return _edit_number_setting(state, "max_context", "max_context", int, prompt_text=prompt_text)
 
     return False
 
@@ -392,39 +450,49 @@ def run_config_tui(config_path: Path | str | None = None) -> int:
     path = Path(config_path).expanduser() if config_path is not None else CONFIG_PATH
     state = load_config_tui_state(path)
     while True:
-        body_control = FormattedTextControl(lambda: [("class:body", _build_main_screen_text(state))])
         result = {"action": "quit"}
-
-        def _toggle_focus() -> None:
-            state.focus_section = "apis" if state.focus_section == "models" else "models"
 
         kb = KeyBindings()
 
         @kb.add("tab")
         def _(event) -> None:
-            _toggle_focus()
+            _focus_relative(state, 1)
             event.app.invalidate()
 
         @kb.add("s-tab")
         def _(event) -> None:
-            _toggle_focus()
+            _focus_relative(state, -1)
+            event.app.invalidate()
+
+        @kb.add("down")
+        def _(event) -> None:
+            _move_focus_down(state)
+            event.app.invalidate()
+
+        @kb.add("up")
+        def _(event) -> None:
+            _move_focus_up(state)
             event.app.invalidate()
 
         @kb.add("enter")
         def _(event) -> None:
-            result["action"] = "edit_models" if state.focus_section == "models" else "edit_apis"
-            event.app.exit()
-
-        @kb.add("a")
-        def _(event) -> None:
-            if state.focus_section != "models":
-                return
-            result["action"] = "add_model"
+            actions = {
+                "models": "activate_model",
+                "add_model": "add_model",
+                "delete_model": "delete_model",
+                "max_tokens": "edit_max_tokens",
+                "temperature": "edit_temperature",
+                "max_context": "edit_max_context",
+                "api_key": "edit_api_key",
+                "save": "save",
+                "cancel": "quit",
+            }
+            result["action"] = actions.get(state.focus_section, "quit")
             event.app.exit()
 
         @kb.add("e")
         def _(event) -> None:
-            result["action"] = "edit_models" if state.focus_section == "models" else "edit_apis"
+            result["action"] = "edit_model"
             event.app.exit()
 
         @kb.add("c-s")
@@ -437,17 +505,24 @@ def run_config_tui(config_path: Path | str | None = None) -> int:
             result["action"] = "quit"
             event.app.exit()
 
-        root = HSplit(
-            [
-                Window(height=1, content=FormattedTextControl([("class:frame", "KittyChain Config")])),
-                Window(height=1, char="-", style="class:frame"),
-                Window(content=body_control),
-            ]
+        body_control = FormattedTextControl(
+            lambda: [("class:body", _build_main_screen_text(state))],
+            focusable=True,
+            key_bindings=kb,
+            show_cursor=False,
+        )
+        body_window = Window(content=body_control)
+
+        root = Dialog(
+            title="KittyChain Config",
+            body=HSplit([body_window]),
+            buttons=[],
+            with_background=True,
         )
         application = Application(
-            layout=Layout(root),
+            layout=Layout(root, focused_element=body_window),
             key_bindings=kb,
-            full_screen=False,
+            full_screen=True,
             style=_APP_STYLE,
         )
         application.run()

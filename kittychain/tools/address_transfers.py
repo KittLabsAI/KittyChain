@@ -246,4 +246,4 @@ def main(address: str, networks: list[str]) -> int:
 
 if __name__ == "__main__":
     address = "0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB"
-    raise SystemExit(main(address, ["Ethereum", "Base", "BNB Chain"]))
+    raise SystemExit(main(address, ["Base"]))

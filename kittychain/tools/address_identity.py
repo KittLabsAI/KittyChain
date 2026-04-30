@@ -298,7 +298,7 @@ Look up ENS identity and exchange attribution for an address on Dune.
 Returns identity labels (ENS names), exchange ownership, and user deposit addresses.
 # Important Notes
 - Always use ask_user to confirm whether to run this tool and remind the user it may take longer.
-- This lookup can be 比较慢, especially for multiple addresses, and is useful for checking ENS and CEX attribution.
+- This lookup can be slow (比较慢), especially for multiple addresses, and is useful for checking ENS and CEX attribution.
 - After calling this tool, use address_malicious and web_fetch to look up the address on https://www.oklink.com/ to verify the result and gather more insights such as token risk, token metadata, and related addresses.
     """
     parameters = {

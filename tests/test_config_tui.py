@@ -1,12 +1,18 @@
 from pathlib import Path
 
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.widgets import Dialog as PromptDialog
+
 from kittychain.config.settings import ApiConfig, Config, StoredModelConfig
 from kittychain.config.tui import (
     _apply_post_action,
+    _build_main_screen_text,
     _edit_apis,
+    _move_focus_down,
     load_config_tui_state,
     mask_secret,
     render_api_summary,
+    run_config_tui,
     write_config_tui_state,
 )
 
@@ -32,88 +38,234 @@ def test_load_config_tui_state_reads_model_and_api_sections(tmp_path: Path):
                 base_url="https://openrouter.ai/api/v1",
             )
         ],
-        apis=ApiConfig(dune_api_key="dune", chainbase_api_key="chainbase", coingecko_api_key="cg-key"),
+        apis=ApiConfig(kittychain_api_key="kitty-key", dune_api_key="dune", chainbase_api_key="chainbase"),
     ).write(path)
 
     state = load_config_tui_state(path)
 
     assert len(state.models) == 1
-    assert state.apis.dune_api_key == "dune"
-    assert state.apis.chainbase_api_key == "chainbase"
-    assert state.apis.coingecko_api_key == "cg-key"
+    assert state.apis.kittychain_api_key == "kitty-key"
 
 
-def test_write_config_tui_state_persists_api_values(tmp_path: Path):
+def test_write_config_tui_state_persists_only_kittychain_api_key(tmp_path: Path):
     path = tmp_path / "config.json"
     state = load_config_tui_state(path)
     state.apis = ApiConfig(
-        dune_api_key=state.apis.dune_api_key,
-        goplus_api_key=state.apis.goplus_api_key,
+        kittychain_api_key="kitty-key",
+        dune_api_key="dune",
         goplus_api_secret="secret",
         alchemy_api_key="alchemy",
-        chainbase_api_key=state.apis.chainbase_api_key,
         coingecko_api_key="cg-key",
     )
 
     write_config_tui_state(state, path)
     loaded = Config.from_file(path)
 
-    assert loaded.apis.alchemy_api_key == "alchemy"
-    assert loaded.apis.goplus_api_secret == "secret"
-    assert loaded.apis.coingecko_api_key == "cg-key"
+    assert loaded.apis.kittychain_api_key == "kitty-key"
+    assert loaded.apis.dune_api_key == ""
+    assert loaded.apis.alchemy_api_key == ""
+    assert loaded.apis.coingecko_api_key == ""
 
 
 def test_apply_post_action_updates_api_state_without_running_dialog_in_event_loop(tmp_path: Path):
     state = load_config_tui_state(tmp_path / "config.json")
-    updated = ApiConfig(dune_api_key="dune", chainbase_api_key="chainbase", coingecko_api_key="cg-key")
+    updated = ApiConfig(kittychain_api_key="kitty-key")
 
     _apply_post_action(
         state,
-        "edit_apis",
+        "edit_api_key",
         edit_apis=lambda existing: updated,
     )
 
     assert state.apis == updated
 
 
-def test_render_api_summary_includes_coingecko_api_key():
-    summary = render_api_summary(ApiConfig(coingecko_api_key="cg-key"))
+def test_render_api_summary_only_includes_kittychain_api_key():
+    summary = render_api_summary(
+        ApiConfig(
+            kittychain_api_key="kitty-key",
+            dune_api_key="dune",
+            coingecko_api_key="cg-key",
+            okx_api_key="okx-key",
+        )
+    )
 
-    assert "CoinGecko API Key" in summary
-    assert "cg-k...-key" in summary
+    assert "KITTYCHAIN_API_KEY: kitt...-key" in summary
+    assert "Dune API Key" not in summary
+    assert "CoinGecko API Key" not in summary
+    assert "OKX API Key" not in summary
 
 
-def test_edit_apis_collects_all_fields_in_one_flow():
+def test_edit_apis_collects_only_kittychain_api_key():
     prompts = []
 
-    def fake_prompt(title: str, fields, defaults):
-        prompts.append((title, tuple(fields), defaults))
-        return ("dune", "goplus-key", "goplus-secret", "alchemy", "chainbase", "cg-key")
+    def fake_prompt(title: str, label: str, default: str):
+        prompts.append((title, label, default))
+        return "kitty-key"
 
-    updated = _edit_apis(ApiConfig(), prompt_form=fake_prompt)
+    updated = _edit_apis(ApiConfig(kittychain_api_key="old-key"), prompt_text=fake_prompt)
 
-    assert prompts == [
-        (
-            "API Config",
-            (
-                "Dune API Key",
-                "GoPlus API Key",
-                "GoPlus API Secret",
-                "Alchemy API Key",
-                "Chainbase API Key",
-                "CoinGecko API Key (Optional)",
-            ),
-            ("", "", "", "", "", ""),
-        )
-    ]
-    assert updated == ApiConfig(
-        dune_api_key="dune",
-        goplus_api_key="goplus-key",
-        goplus_api_secret="goplus-secret",
-        alchemy_api_key="alchemy",
-        chainbase_api_key="chainbase",
-        coingecko_api_key="cg-key",
+    assert prompts == [("API Config", "KITTYCHAIN_API_KEY", "old-key")]
+    assert updated == ApiConfig(kittychain_api_key="kitty-key")
+
+
+def test_main_screen_shows_all_config_sections_on_one_page(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models.append(
+        type("Model", (), {
+            "provider": "OpenRouter",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "gpt-4.1",
+            "base_url": "https://openrouter.ai/api/v1",
+        })()
     )
+    state.apis = ApiConfig(kittychain_api_key="kitty-key", dune_api_key="dune")
+
+    screen = _build_main_screen_text(state)
+
+    assert "Models" in screen
+    assert "[Add]" in screen
+    assert "[Delete]" in screen
+    assert "max_tokens: 32000" in screen
+    assert "temperature: 0.0" in screen
+    assert "max_context: 200000" in screen
+    assert "KITTYCHAIN_API_KEY: kitt...-key" in screen
+    assert "[Save]" in screen
+    assert "[Cancel]" in screen
+    assert "e: edit" in screen
+    assert "Tab: move" not in screen
+    assert "a: add" not in screen
+    assert "d: delete" not in screen
+    assert "Dune API Key" not in screen
+    assert "APIs" not in screen
+
+
+def test_down_from_last_model_moves_focus_to_add_button(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models = [
+        type("Model", (), {
+            "provider": "OpenRouter",
+            "interface": "openai",
+            "api_key": "one",
+            "model_name": "gpt-4.1",
+            "base_url": "https://openrouter.ai/api/v1",
+        })(),
+        type("Model", (), {
+            "provider": "OpenAI",
+            "interface": "openai",
+            "api_key": "two",
+            "model_name": "gpt-4o",
+            "base_url": "https://api.openai.com/v1",
+        })(),
+    ]
+
+    _move_focus_down(state)
+    assert state.focus_section == "models"
+    assert state.selected_model_index == 1
+
+    _move_focus_down(state)
+    assert state.focus_section == "add_model"
+    assert state.selected_model_index == 1
+
+
+def test_run_config_tui_uses_dialog_style_for_initial_screen(tmp_path: Path, monkeypatch):
+    captured = {}
+
+    def fake_dialog(*, title, body, buttons, with_background):
+        captured["title"] = title
+        captured["buttons"] = [button.text for button in buttons]
+        captured["with_background"] = with_background
+        captured["body_control"] = body.children[0].content
+        captured["body_focusable"] = bool(captured["body_control"].focusable())
+        captured["binding_keys"] = {binding.keys for binding in captured["body_control"].key_bindings.bindings}
+        return PromptDialog(title=title, body=body, buttons=buttons, with_background=with_background)
+
+    class FakeApplication:
+        def __init__(self, *, layout, **kwargs):
+            captured["layout"] = layout
+            captured["full_screen"] = kwargs["full_screen"]
+            captured["focused_control"] = layout.current_control
+
+        def run(self):
+            return None
+
+    monkeypatch.setattr("kittychain.config.tui.Dialog", fake_dialog)
+    monkeypatch.setattr("kittychain.config.tui.Application", FakeApplication)
+
+    run_config_tui(tmp_path / "config.json")
+
+    assert captured["title"] == "KittyChain Config"
+    assert captured["buttons"] == []
+    assert captured["with_background"] is True
+    assert captured["body_focusable"] is True
+    assert captured["focused_control"] is captured["body_control"]
+    assert captured["full_screen"] is True
+    assert (Keys.Tab,) in captured["binding_keys"]
+    assert (Keys.BackTab,) in captured["binding_keys"]
+    assert ("e",) in captured["binding_keys"]
+    assert ("a",) not in captured["binding_keys"]
+    assert ("d",) not in captured["binding_keys"]
+
+
+def test_apply_post_action_activates_selected_model_without_editing(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models = [
+        type("Model", (), {
+            "provider": "OpenRouter",
+            "interface": "openai",
+            "api_key": "one",
+            "model_name": "gpt-4.1",
+            "base_url": "https://openrouter.ai/api/v1",
+        })(),
+        type("Model", (), {
+            "provider": "OpenAI",
+            "interface": "openai",
+            "api_key": "two",
+            "model_name": "gpt-4o",
+            "base_url": "https://api.openai.com/v1",
+        })(),
+    ]
+    state.selected_model_index = 1
+
+    changed = _apply_post_action(
+        state,
+        "activate_model",
+        edit_model=lambda existing=None: (_ for _ in ()).throw(AssertionError("edit should not run")),
+    )
+
+    assert changed is True
+    assert [model.model_name for model in state.models] == ["gpt-4o", "gpt-4.1"]
+    assert state.selected_model_index == 0
+
+
+def test_apply_post_action_deletes_selected_model(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models = [
+        type("Model", (), {
+            "provider": "OpenRouter",
+            "interface": "openai",
+            "api_key": "one",
+            "model_name": "gpt-4.1",
+            "base_url": "https://openrouter.ai/api/v1",
+        })(),
+        type("Model", (), {
+            "provider": "OpenAI",
+            "interface": "openai",
+            "api_key": "two",
+            "model_name": "gpt-4o",
+            "base_url": "https://api.openai.com/v1",
+        })(),
+    ]
+
+    changed = _apply_post_action(
+        state,
+        "delete_model",
+        select_model_index=lambda models: 0,
+    )
+
+    assert changed is True
+    assert [model.model_name for model in state.models] == ["gpt-4o"]
 
 
 def test_apply_post_action_adds_model_outside_main_application_loop(tmp_path: Path):

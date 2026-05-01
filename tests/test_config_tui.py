@@ -45,8 +45,11 @@ def test_load_config_tui_state_reads_model_and_api_sections(tmp_path: Path):
     state = load_config_tui_state(path)
 
     assert len(state.models) == 2
-    assert state.models[0].is_default is True
-    assert state.models[1].provider == "OpenRouter"
+    # Active model at position 0
+    assert state.models[0].provider == "OpenRouter"
+    assert state.models[0].is_default is False
+    # Default model appended
+    assert state.models[1].is_default is True
     assert state.apis.kittychain_api_key == "kitty-key"
 
 
@@ -290,8 +293,9 @@ def test_apply_post_action_adds_model_outside_main_application_loop(tmp_path: Pa
         edit_model=lambda existing=None: model,
     )
 
-    assert len(state.models) == 1
-    assert state.models[0].model_name == "gpt-4.1"
+    assert len(state.models) == 2
+    assert state.models[0].is_default is True
+    assert state.models[1].model_name == "gpt-4.1"
 
 
 def test_load_config_tui_state_marks_default_model(tmp_path: Path):

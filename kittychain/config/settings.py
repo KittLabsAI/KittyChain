@@ -26,6 +26,7 @@ DEFAULT_MODEL_PROVIDER = "Kitty"
 DEFAULT_MODEL_BASE_URL = "https://kittyhome.pages.dev/kitty/v1"
 DEFAULT_MODEL_INTERFACE = "openai"
 DEFAULT_MODEL_NAME = "kitty-2.1"
+DEFAULT_MODEL_SENTINEL = "DEFAULT_MODEL"
 
 
 def _normalize_interface(value: object, *, field_name: str) -> str:
@@ -106,33 +107,31 @@ class Config:
     models: list[StoredModelConfig] = field(default_factory=list)
     apis: ApiConfig = field(default_factory=ApiConfig)
 
+    def _serialize_model(self, model: StoredModelConfig) -> dict | str:
+        if model.is_default:
+            return DEFAULT_MODEL_SENTINEL
+        return {
+            "interface": model.interface,
+            "provider": model.provider,
+            "api_key": model.api_key,
+            "model_name": model.model_name,
+            "base_url": model.base_url,
+        }
+
     def to_payload(self) -> dict:
         active_index = self.active_model_index()
-        ordered_models = [
-            m for m in self.models if not m.is_default
-        ]
-        if active_index is not None:
-            active = self.models[active_index]
-            if not active.is_default:
-                ordered_models = [
-                    active,
-                    *[m for m in ordered_models if m is not active],
-                ]
+        if active_index is not None and active_index > 0:
+            ordered = [self.models[active_index], *(
+                m for i, m in enumerate(self.models) if i != active_index
+            )]
+        else:
+            ordered = list(self.models)
 
         payload: dict = {
             "interface": self.interface,
             "model": self.model,
             "api_key": self.api_key,
-            "models": [
-                {
-                    "interface": model.interface,
-                    "provider": model.provider,
-                    "api_key": model.api_key,
-                    "model_name": model.model_name,
-                    "base_url": model.base_url,
-                }
-                for model in ordered_models
-            ],
+            "models": [self._serialize_model(m) for m in ordered],
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "max_context": self.max_context_tokens,
@@ -163,6 +162,8 @@ class Config:
             raise ValueError(f"Invalid model index: {index}")
 
         selected = self.models[index]
+        # Move selected model to front (position = active)
+        self.models.insert(0, self.models.pop(index))
         self.interface = selected.interface
         self.model = selected.model_name
         self.api_key = selected.api_key
@@ -175,14 +176,7 @@ class Config:
 
         if not path.exists():
             apis = ApiConfig()
-            default_model = StoredModelConfig(
-                interface=DEFAULT_MODEL_INTERFACE,
-                provider=DEFAULT_MODEL_PROVIDER,
-                api_key=apis.kittychain_api_key,
-                model_name=DEFAULT_MODEL_NAME,
-                base_url=DEFAULT_MODEL_BASE_URL,
-                is_default=True,
-            )
+            default_model = cls._make_default_model(apis.kittychain_api_key)
             return cls(
                 interface=default_model.interface,
                 model=default_model.model_name,
@@ -200,41 +194,42 @@ class Config:
         if not isinstance(raw, dict):
             raise ValueError(f"{path} must contain a JSON object")
 
-        models = cls._normalize_models(raw)
         apis = ApiConfig.from_dict(raw.get("apis"))
+        models = cls._normalize_models(raw, apis)
 
-        default_model = StoredModelConfig(
-            interface=DEFAULT_MODEL_INTERFACE,
-            provider=DEFAULT_MODEL_PROVIDER,
-            api_key=apis.kittychain_api_key,
-            model_name=DEFAULT_MODEL_NAME,
-            base_url=DEFAULT_MODEL_BASE_URL,
-            is_default=True,
-        )
-        models = [default_model, *models]
+        # Ensure default model is always present
+        has_default = any(m.is_default for m in models)
+        if not has_default:
+            # Insert after user's models so user's active (first) stays first
+            models.append(cls._make_default_model(apis.kittychain_api_key))
 
-        # Preserve user's active model from config, fall back to default
+        # Active model: first in list (position-based)
+        active = models[0]
+
+        # Backward compat: legacy top-level fields can override active model
         saved_interface = raw.get("interface", "")
         saved_model_name = raw.get("model", "")
-        saved_api_key = raw.get("api_key", "")
-        saved_base_url = raw.get("base_url")
-
-        active_model = default_model
-        for m in models:
-            if (
-                m.interface == saved_interface
-                and m.model_name == saved_model_name
-                and m.api_key == saved_api_key
-                and m.base_url == saved_base_url
-            ):
-                active_model = m
-                break
+        if saved_interface and saved_model_name:
+            saved_api_key = raw.get("api_key", "")
+            saved_base_url = raw.get("base_url")
+            for m in models:
+                if (
+                    m.interface == saved_interface
+                    and m.model_name == saved_model_name
+                    and m.api_key == saved_api_key
+                    and m.base_url == saved_base_url
+                ):
+                    active = m
+                    # Move matched model to front
+                    models.remove(m)
+                    models.insert(0, m)
+                    break
 
         return cls(
-            interface=active_model.interface,
-            model=active_model.model_name,
-            api_key=active_model.api_key,
-            base_url=active_model.base_url,
+            interface=active.interface,
+            model=active.model_name,
+            api_key=active.api_key,
+            base_url=active.base_url,
             max_tokens=int(raw.get("max_tokens", 32000)),
             temperature=float(raw.get("temperature", 0.0)),
             max_context_tokens=int(raw.get("max_context", raw.get("max_context_tokens", 200000))),
@@ -243,18 +238,38 @@ class Config:
         )
 
     @staticmethod
-    def _normalize_models(raw: dict) -> list[StoredModelConfig]:
-        models = raw.get("models")
-        if models is None:
+    def _normalize_models(raw: dict, apis: ApiConfig | None = None) -> list[StoredModelConfig]:
+        models_raw = raw.get("models")
+        if models_raw is None:
             return []
-        if not isinstance(models, list):
+        if not isinstance(models_raw, list):
             raise ValueError("models must be a list")
-        return [Config._normalize_model_entry(entry, index) for index, entry in enumerate(models)]
+        models = [Config._normalize_model_entry(entry, index) for index, entry in enumerate(models_raw)]
+        # Resolve DEFAULT_MODEL sentinel: set api_key from kittychain_api_key
+        kitty_key = apis.kittychain_api_key if apis is not None else ""
+        models = [
+            Config._make_default_model(kitty_key) if m.is_default and m.api_key == "" else m
+            for m in models
+        ]
+        return models
+
+    @staticmethod
+    def _make_default_model(api_key: str = "") -> StoredModelConfig:
+        return StoredModelConfig(
+            interface=DEFAULT_MODEL_INTERFACE,
+            provider=DEFAULT_MODEL_PROVIDER,
+            api_key=api_key,
+            model_name=DEFAULT_MODEL_NAME,
+            base_url=DEFAULT_MODEL_BASE_URL,
+            is_default=True,
+        )
 
     @staticmethod
     def _normalize_model_entry(entry: object, index: int) -> StoredModelConfig:
+        if isinstance(entry, str) and entry == DEFAULT_MODEL_SENTINEL:
+            return Config._make_default_model()
         if not isinstance(entry, dict):
-            raise ValueError(f"models[{index}] must be an object")
+            raise ValueError(f"models[{index}] must be an object or '{DEFAULT_MODEL_SENTINEL}'")
 
         field_prefix = f"models[{index}]"
         interface = _normalize_interface(entry.get("interface"), field_name=f"{field_prefix}.interface")

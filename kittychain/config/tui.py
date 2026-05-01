@@ -91,14 +91,6 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
     path = Path(config_path).expanduser() if config_path is not None else CONFIG_PATH
     max_tokens, temperature, max_context = _load_raw_defaults(path)
 
-    if not path.exists():
-        return ConfigTUIState(
-            issue=f"Config file not found: {path}\nUse this screen to create one.",
-            max_tokens=max_tokens,
-            temperature=temperature,
-            max_context=max_context,
-        )
-
     try:
         config = Config.from_file(path)
     except ValueError as exc:
@@ -108,6 +100,10 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
             temperature=temperature,
             max_context=max_context,
         )
+
+    issue = None
+    if not path.exists():
+        issue = f"Config file not found: {path}\nUse this screen to create one."
 
     return ConfigTUIState(
         models=[
@@ -125,6 +121,7 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
         max_tokens=config.max_tokens,
         temperature=config.temperature,
         max_context=config.max_context_tokens,
+        issue=issue,
     )
 
 

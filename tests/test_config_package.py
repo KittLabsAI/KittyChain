@@ -45,7 +45,7 @@ def test_config_round_trip_persists_models_and_apis(tmp_path: Path):
     assert loaded.models[1] == original.models[0]
     assert loaded.apis == original.apis
     assert loaded.interface == "openai"
-    assert loaded.model == "kitty-2.1"
+    assert loaded.model == "gpt-4.1"
 
 
 def test_config_round_trip_persists_only_kittychain_api_key(tmp_path: Path):
@@ -224,3 +224,41 @@ def test_config_round_trip_with_default_model(tmp_path: Path):
 
     raw = json.loads(path.read_text())
     assert raw["models"] == []
+
+
+def test_config_preserves_active_model_across_reload(tmp_path: Path):
+    path = tmp_path / "config.json"
+    Config(
+        interface="openai",
+        model="gpt-4.1",
+        api_key="key-a",
+        base_url="https://openrouter.ai/api/v1",
+        models=[
+            StoredModelConfig(
+                interface="openai",
+                provider="OpenRouter",
+                api_key="key-a",
+                model_name="gpt-4.1",
+                base_url="https://openrouter.ai/api/v1",
+            ),
+            StoredModelConfig(
+                interface="openai",
+                provider="Minimax",
+                api_key="key-b",
+                model_name="MiniMax-M2.7",
+                base_url="https://api.minimaxi.com/v1",
+            ),
+        ],
+        apis=ApiConfig(kittychain_api_key="kitty-key"),
+    ).write(path)
+
+    # Simulate: user switches to Minimax via /model, saves
+    first = Config.from_file(path)
+    first.activate_model(2)  # index 0=Kitty, 1=OpenRouter, 2=Minimax
+    first.write(path)
+
+    # Reload — Minimax should still be active
+    reloaded = Config.from_file(path)
+    assert reloaded.model == "MiniMax-M2.7"
+    assert reloaded.interface == "openai"
+    assert reloaded.base_url == "https://api.minimaxi.com/v1"

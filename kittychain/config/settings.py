@@ -119,7 +119,10 @@ class Config:
                     *[m for m in ordered_models if m is not active],
                 ]
 
-        return {
+        payload: dict = {
+            "interface": self.interface,
+            "model": self.model,
+            "api_key": self.api_key,
             "models": [
                 {
                     "interface": model.interface,
@@ -135,6 +138,9 @@ class Config:
             "max_context": self.max_context_tokens,
             "apis": self.apis.to_dict(),
         }
+        if self.base_url is not None:
+            payload["base_url"] = self.base_url
+        return payload
 
     def write(self, config_path: Path | str | None = None) -> None:
         path = Path(config_path).expanduser() if config_path is not None else CONFIG_PATH
@@ -207,7 +213,22 @@ class Config:
         )
         models = [default_model, *models]
 
-        active_model = models[0]
+        # Preserve user's active model from config, fall back to default
+        saved_interface = raw.get("interface", "")
+        saved_model_name = raw.get("model", "")
+        saved_api_key = raw.get("api_key", "")
+        saved_base_url = raw.get("base_url")
+
+        active_model = default_model
+        for m in models:
+            if (
+                m.interface == saved_interface
+                and m.model_name == saved_model_name
+                and m.api_key == saved_api_key
+                and m.base_url == saved_base_url
+            ):
+                active_model = m
+                break
 
         return cls(
             interface=active_model.interface,

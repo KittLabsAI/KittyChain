@@ -22,6 +22,11 @@ LEGACY_API_FIELDS = (
     "okx_passphrase",
 )
 
+DEFAULT_MODEL_PROVIDER = "Kitty"
+DEFAULT_MODEL_BASE_URL = "https://kittyhome.pages.dev/kitty/v1"
+DEFAULT_MODEL_INTERFACE = "openai"
+DEFAULT_MODEL_NAME = "kitty-2.1"
+
 
 def _normalize_interface(value: object, *, field_name: str) -> str:
     if value in (None, ""):
@@ -57,6 +62,7 @@ class StoredModelConfig:
     api_key: str
     model_name: str
     base_url: str | None = None
+    is_default: bool = False
 
 
 @dataclass(frozen=True)

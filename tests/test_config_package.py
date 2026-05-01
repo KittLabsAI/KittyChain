@@ -91,3 +91,40 @@ def test_config_invalid_json_raises_value_error(tmp_path: Path):
 
     with pytest.raises(ValueError):
         Config.from_file(path)
+
+
+def test_default_model_constants_are_exported():
+    from kittychain.config import (
+        DEFAULT_MODEL_PROVIDER,
+        DEFAULT_MODEL_BASE_URL,
+        DEFAULT_MODEL_INTERFACE,
+        DEFAULT_MODEL_NAME,
+    )
+
+    assert DEFAULT_MODEL_PROVIDER == "Kitty"
+    assert DEFAULT_MODEL_BASE_URL == "https://kittyhome.pages.dev/kitty/v1"
+    assert DEFAULT_MODEL_INTERFACE == "openai"
+    assert DEFAULT_MODEL_NAME == "kitty-2.1"
+
+
+def test_stored_model_config_has_is_default_flag():
+    model = StoredModelConfig(
+        interface="openai",
+        provider="Kitty",
+        api_key="key",
+        model_name="kitty-2.1",
+        base_url="https://kittyhome.pages.dev/kitty/v1",
+        is_default=True,
+    )
+
+    assert model.is_default is True
+
+    regular = StoredModelConfig(
+        interface="openai",
+        provider="OpenRouter",
+        api_key="key",
+        model_name="gpt-4.1",
+        base_url="https://openrouter.ai/api/v1",
+    )
+
+    assert regular.is_default is False

@@ -425,20 +425,19 @@ def _apply_post_action(
             return False
 
         try:
-            index = select_model_index(
-                state.models,
+            deletable_index = select_model_index(
+                deletable,
                 title="Delete Model",
                 text="Choose an existing model to delete.",
             )
         except TypeError:
-            index = select_model_index(state.models)
-        if index is None:
+            deletable_index = select_model_index(deletable)
+        if deletable_index is None:
             return False
-        if state.models[index].is_default:
-            state.issue = "Default model cannot be deleted."
-            return False
-        del state.models[index]
-        state.selected_model_index = max(0, min(index, len(state.models) - 1))
+        selected = deletable[deletable_index]
+        original_index = state.models.index(selected)
+        del state.models[original_index]
+        state.selected_model_index = max(0, min(original_index, len(state.models) - 1))
         state.issue = None
         return True
 

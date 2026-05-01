@@ -384,6 +384,46 @@ def test_apply_post_action_blocks_delete_on_default_model(tmp_path: Path):
     assert len(state.models) == 1
 
 
+def test_apply_post_action_delete_filters_default_from_selection(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models = [
+        type("Model", (), {
+            "provider": "Kitty",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "kitty-2.1",
+            "base_url": "https://kittyhome.pages.dev/kitty/v1",
+            "is_default": True,
+        })(),
+        type("Model", (), {
+            "provider": "OpenRouter",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "gpt-4.1",
+            "base_url": "https://openrouter.ai/api/v1",
+            "is_default": False,
+        })(),
+    ]
+
+    passed_models = []
+
+    def capture_select(models, **kw):
+        passed_models.extend(models)
+        return 0
+
+    changed = _apply_post_action(
+        state,
+        "delete_model",
+        select_model_index=capture_select,
+    )
+
+    assert changed is True
+    assert len(passed_models) == 1
+    assert passed_models[0].provider == "OpenRouter"
+    assert len(state.models) == 1
+    assert state.models[0].is_default is True
+
+
 def test_main_screen_shows_default_hint_when_only_default(tmp_path: Path):
     state = load_config_tui_state(tmp_path / "config.json")
     state.models = [

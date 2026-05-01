@@ -656,12 +656,16 @@ def _format_model_choices(config: Config) -> tuple[list[str], str | None]:
 
     for index, model in enumerate(config.models, 1):
         marker = "*" if active_index == index - 1 else " "
-        lines.append(f"{index}. {marker} {model.provider} | {model.model_name}")
+        provider_label = f"{model.provider} (default)" if model.is_default else model.provider
+        lines.append(f"{index}. {marker} {provider_label} | {model.model_name}")
 
     notices: list[str] = []
     if active_index is None and config.models:
         notices.append("Current runtime is outside the configured model list.")
-    if len(config.models) == 1:
+    user_models = [m for m in config.models if not m.is_default]
+    if len(user_models) == 0 and config.models:
+        pass  # only default model, no switch notice
+    elif len(config.models) == 1:
         notices.append("Only one configured model is available, so switching is unavailable.")
 
     return lines, " ".join(notices) if notices else None
@@ -1103,6 +1107,14 @@ def _tool_output_display_text(name: str, text: str) -> str:
     return ""
 
 
+def _safe_markdown(text: str):
+    """Create a Markdown renderable, falling back to plain Text on parse errors."""
+    try:
+        return Markdown(text)
+    except Exception:
+        return Text(text)
+
+
 def _render_markdown(text: str):
     renderables: list[object] = []
     lines = text.splitlines()
@@ -1117,14 +1129,14 @@ def _render_markdown(text: str):
             continue
 
         if markdown_buffer:
-            renderables.append(Markdown("\n".join(markdown_buffer)))
+            renderables.append(_safe_markdown("\n".join(markdown_buffer)))
             markdown_buffer = []
 
         renderables.append(_render_markdown_table(table_block))
         index += len(table_block)
 
     if markdown_buffer or not renderables:
-        renderables.append(Markdown("\n".join(markdown_buffer)))
+        renderables.append(_safe_markdown("\n".join(markdown_buffer)))
 
     return Group(*renderables)
 

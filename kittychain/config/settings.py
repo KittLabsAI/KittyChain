@@ -165,7 +165,23 @@ class Config:
         path = Path(config_path).expanduser() if config_path is not None else CONFIG_PATH
 
         if not path.exists():
-            return cls()
+            apis = ApiConfig()
+            default_model = StoredModelConfig(
+                interface=DEFAULT_MODEL_INTERFACE,
+                provider=DEFAULT_MODEL_PROVIDER,
+                api_key=apis.kittychain_api_key,
+                model_name=DEFAULT_MODEL_NAME,
+                base_url=DEFAULT_MODEL_BASE_URL,
+                is_default=True,
+            )
+            return cls(
+                interface=default_model.interface,
+                model=default_model.model_name,
+                api_key=default_model.api_key,
+                base_url=default_model.base_url,
+                models=[default_model],
+                apis=apis,
+            )
 
         try:
             raw = json.loads(path.read_text())
@@ -176,18 +192,30 @@ class Config:
             raise ValueError(f"{path} must contain a JSON object")
 
         models = cls._normalize_models(raw)
-        active_model = models[0] if models else None
+        apis = ApiConfig.from_dict(raw.get("apis"))
+
+        default_model = StoredModelConfig(
+            interface=DEFAULT_MODEL_INTERFACE,
+            provider=DEFAULT_MODEL_PROVIDER,
+            api_key=apis.kittychain_api_key,
+            model_name=DEFAULT_MODEL_NAME,
+            base_url=DEFAULT_MODEL_BASE_URL,
+            is_default=True,
+        )
+        models = [default_model, *models]
+
+        active_model = models[0]
 
         return cls(
-            interface=active_model.interface if active_model is not None else "openai",
-            model=active_model.model_name if active_model is not None else "gpt-4o",
-            api_key=active_model.api_key if active_model is not None else "",
-            base_url=active_model.base_url if active_model is not None else None,
+            interface=active_model.interface,
+            model=active_model.model_name,
+            api_key=active_model.api_key,
+            base_url=active_model.base_url,
             max_tokens=int(raw.get("max_tokens", 32000)),
             temperature=float(raw.get("temperature", 0.0)),
             max_context_tokens=int(raw.get("max_context", raw.get("max_context_tokens", 200000))),
             models=models,
-            apis=ApiConfig.from_dict(raw.get("apis")),
+            apis=apis,
         )
 
     @staticmethod

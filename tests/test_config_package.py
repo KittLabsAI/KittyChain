@@ -8,7 +8,8 @@ from kittychain.config import ApiConfig, Config, StoredModelConfig
 def test_config_from_missing_file_uses_defaults(tmp_path: Path):
     config = Config.from_file(tmp_path / "missing.json")
 
-    assert config.models == []
+    assert len(config.models) == 1
+    assert config.models[0].is_default is True
     assert config.apis == ApiConfig()
     assert config.max_tokens == 32000
     assert config.temperature == 0.0
@@ -37,10 +38,13 @@ def test_config_round_trip_persists_models_and_apis(tmp_path: Path):
     original.write(path)
     loaded = Config.from_file(path)
 
-    assert loaded.models == original.models
+    assert len(loaded.models) == 2
+    assert loaded.models[0].provider == "Kitty"
+    assert loaded.models[0].is_default is True
+    assert loaded.models[1] == original.models[0]
     assert loaded.apis == original.apis
     assert loaded.interface == "openai"
-    assert loaded.model == "gpt-4.1"
+    assert loaded.model == "kitty-2.1"
 
 
 def test_config_round_trip_persists_only_kittychain_api_key(tmp_path: Path):
@@ -128,3 +132,56 @@ def test_stored_model_config_has_is_default_flag():
     )
 
     assert regular.is_default is False
+
+
+def test_config_from_missing_file_injects_default_model(tmp_path: Path):
+    config = Config.from_file(tmp_path / "missing.json")
+
+    assert len(config.models) == 1
+    default = config.models[0]
+    assert default.provider == "Kitty"
+    assert default.interface == "openai"
+    assert default.model_name == "kitty-2.1"
+    assert default.base_url == "https://kittyhome.pages.dev/kitty/v1"
+    assert default.is_default is True
+    assert default.api_key == ""  # no kittychain_api_key set
+
+
+def test_config_from_file_prepends_default_model_before_user_models(tmp_path: Path):
+    path = tmp_path / "config.json"
+    Config(
+        interface="openai",
+        model="gpt-4.1",
+        api_key="model-key",
+        models=[
+            StoredModelConfig(
+                interface="openai",
+                provider="OpenRouter",
+                api_key="model-key",
+                model_name="gpt-4.1",
+                base_url="https://openrouter.ai/api/v1",
+            )
+        ],
+        apis=ApiConfig(kittychain_api_key="kitty-key"),
+    ).write(path)
+
+    loaded = Config.from_file(path)
+
+    assert len(loaded.models) == 2
+    assert loaded.models[0].provider == "Kitty"
+    assert loaded.models[0].is_default is True
+    assert loaded.models[0].api_key == "kitty-key"
+    assert loaded.models[1].provider == "OpenRouter"
+    assert loaded.models[1].is_default is False
+
+
+def test_config_default_model_uses_kittychain_api_key(tmp_path: Path):
+    path = tmp_path / "config.json"
+    Config(
+        apis=ApiConfig(kittychain_api_key="my-kitty-key"),
+    ).write(path)
+
+    loaded = Config.from_file(path)
+
+    assert loaded.models[0].api_key == "my-kitty-key"
+    assert loaded.api_key == "my-kitty-key"

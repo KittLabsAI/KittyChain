@@ -40,6 +40,7 @@ class ConfigTUIModel:
     api_key: str
     model_name: str
     base_url: str
+    is_default: bool = False
 
 
 @dataclass
@@ -116,6 +117,7 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
                 api_key=model.api_key,
                 model_name=model.model_name,
                 base_url=model.base_url or "",
+                is_default=model.is_default,
             )
             for model in config.models
         ],
@@ -146,7 +148,10 @@ def build_model_from_provider(
 
 
 def render_model_list(models: list[ConfigTUIModel], selected_index: int = 0) -> str:
-    provider_width = max(len("Provider"), *(len(model.provider) for model in models)) if models else len("Provider")
+    def _display_provider(model: ConfigTUIModel) -> str:
+        return f"{model.provider} (default)" if model.is_default else model.provider
+
+    provider_width = max(len("Provider"), *(_display_provider(m).__len__() for m in models)) if models else len("Provider")
     model_width = max(len("Model"), *(len(model.model_name) for model in models)) if models else len("Model")
     base_width = max(len("Base URL"), *(len(model.base_url) for model in models)) if models else len("Base URL")
 
@@ -156,7 +161,7 @@ def render_model_list(models: list[ConfigTUIModel], selected_index: int = 0) -> 
         return "\n".join([header, divider, "(no models configured yet)"])
 
     rows = [
-        f"{'>' if index == selected_index else ' '}  {model.provider:<{provider_width}} | "
+        f"{'>' if index == selected_index else ' '}  {_display_provider(model):<{provider_width}} | "
         f"{model.model_name:<{model_width}} | {model.base_url:<{base_width}}"
         for index, model in enumerate(models)
     ]
@@ -393,6 +398,9 @@ def _apply_post_action(
             state.issue = None
             return True
 
+        if state.models[index].is_default:
+            return False
+
         updated = edit_model(state.models[index])
         if updated is None:
             return False
@@ -411,6 +419,11 @@ def _apply_post_action(
         return True
 
     if action == "delete_model":
+        deletable = [m for m in state.models if not m.is_default]
+        if not deletable:
+            state.issue = "Default model cannot be deleted."
+            return False
+
         try:
             index = select_model_index(
                 state.models,
@@ -420,6 +433,9 @@ def _apply_post_action(
         except TypeError:
             index = select_model_index(state.models)
         if index is None:
+            return False
+        if state.models[index].is_default:
+            state.issue = "Default model cannot be deleted."
             return False
         del state.models[index]
         state.selected_model_index = max(0, min(index, len(state.models) - 1))

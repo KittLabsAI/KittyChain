@@ -12,6 +12,7 @@ from kittychain.config.tui import (
     load_config_tui_state,
     mask_secret,
     render_api_summary,
+    render_model_list,
     run_config_tui,
     write_config_tui_state,
 )
@@ -118,6 +119,7 @@ def test_main_screen_shows_all_config_sections_on_one_page(tmp_path: Path):
             "api_key": "key",
             "model_name": "gpt-4.1",
             "base_url": "https://openrouter.ai/api/v1",
+            "is_default": False,
         })()
     )
     state.apis = ApiConfig(kittychain_api_key="kitty-key", dune_api_key="dune")
@@ -248,6 +250,7 @@ def test_apply_post_action_deletes_selected_model(tmp_path: Path):
             "api_key": "one",
             "model_name": "gpt-4.1",
             "base_url": "https://openrouter.ai/api/v1",
+            "is_default": False,
         })(),
         type("Model", (), {
             "provider": "OpenAI",
@@ -255,6 +258,7 @@ def test_apply_post_action_deletes_selected_model(tmp_path: Path):
             "api_key": "two",
             "model_name": "gpt-4o",
             "base_url": "https://api.openai.com/v1",
+            "is_default": False,
         })(),
     ]
 
@@ -286,3 +290,111 @@ def test_apply_post_action_adds_model_outside_main_application_loop(tmp_path: Pa
 
     assert len(state.models) == 1
     assert state.models[0].model_name == "gpt-4.1"
+
+
+def test_load_config_tui_state_marks_default_model(tmp_path: Path):
+    path = tmp_path / "config.json"
+    Config(
+        apis=ApiConfig(kittychain_api_key="kitty-key"),
+    ).write(path)
+
+    state = load_config_tui_state(path)
+
+    assert len(state.models) == 1
+    assert state.models[0].is_default is True
+    assert state.models[0].provider == "Kitty"
+
+
+def test_render_model_list_shows_default_label():
+    models = [
+        type("Model", (), {
+            "provider": "Kitty",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "kitty-2.1",
+            "base_url": "https://kittyhome.pages.dev/kitty/v1",
+            "is_default": True,
+        })(),
+        type("Model", (), {
+            "provider": "OpenRouter",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "gpt-4.1",
+            "base_url": "https://openrouter.ai/api/v1",
+            "is_default": False,
+        })(),
+    ]
+
+    rendered = render_model_list(models)
+
+    assert "Kitty (default)" in rendered
+    assert "OpenRouter" in rendered
+    assert "OpenRouter (default)" not in rendered
+
+
+def test_apply_post_action_blocks_edit_on_default_model(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models = [
+        type("Model", (), {
+            "provider": "Kitty",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "kitty-2.1",
+            "base_url": "https://kittyhome.pages.dev/kitty/v1",
+            "is_default": True,
+        })(),
+    ]
+    state.selected_model_index = 0
+
+    edit_called = False
+
+    def fake_edit(existing=None):
+        nonlocal edit_called
+        edit_called = True
+        return existing
+
+    changed = _apply_post_action(state, "edit_model", edit_model=fake_edit)
+
+    assert changed is False
+    assert edit_called is False
+
+
+def test_apply_post_action_blocks_delete_on_default_model(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models = [
+        type("Model", (), {
+            "provider": "Kitty",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "kitty-2.1",
+            "base_url": "https://kittyhome.pages.dev/kitty/v1",
+            "is_default": True,
+        })(),
+    ]
+
+    changed = _apply_post_action(
+        state,
+        "delete_model",
+        select_model_index=lambda models, **kw: 0,
+    )
+
+    assert changed is False
+    assert len(state.models) == 1
+
+
+def test_main_screen_shows_default_hint_when_only_default(tmp_path: Path):
+    state = load_config_tui_state(tmp_path / "config.json")
+    state.models = [
+        type("Model", (), {
+            "provider": "Kitty",
+            "interface": "openai",
+            "api_key": "key",
+            "model_name": "kitty-2.1",
+            "base_url": "https://kittyhome.pages.dev/kitty/v1",
+            "is_default": True,
+        })(),
+    ]
+
+    screen = _build_main_screen_text(state)
+
+    assert "Kitty (default)" in screen

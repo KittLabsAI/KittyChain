@@ -198,6 +198,7 @@ def write_config_tui_state(state: ConfigTUIState, config_path: Path | str | None
                 api_key=model.api_key,
                 model_name=model.model_name,
                 base_url=model.base_url or None,
+                is_default=model.is_default,
             )
             for model in state.models
         ],

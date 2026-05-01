@@ -40,6 +40,7 @@ class ConfigTUIModel:
     api_key: str
     model_name: str
     base_url: str
+    is_default: bool = False
 
 
 @dataclass
@@ -90,14 +91,6 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
     path = Path(config_path).expanduser() if config_path is not None else CONFIG_PATH
     max_tokens, temperature, max_context = _load_raw_defaults(path)
 
-    if not path.exists():
-        return ConfigTUIState(
-            issue=f"Config file not found: {path}\nUse this screen to create one.",
-            max_tokens=max_tokens,
-            temperature=temperature,
-            max_context=max_context,
-        )
-
     try:
         config = Config.from_file(path)
     except ValueError as exc:
@@ -108,6 +101,10 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
             max_context=max_context,
         )
 
+    issue = None
+    if not path.exists():
+        issue = f"Config file not found: {path}\nUse this screen to create one."
+
     return ConfigTUIState(
         models=[
             ConfigTUIModel(
@@ -116,6 +113,7 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
                 api_key=model.api_key,
                 model_name=model.model_name,
                 base_url=model.base_url or "",
+                is_default=model.is_default,
             )
             for model in config.models
         ],
@@ -123,6 +121,7 @@ def load_config_tui_state(config_path: Path | str | None = None) -> ConfigTUISta
         max_tokens=config.max_tokens,
         temperature=config.temperature,
         max_context=config.max_context_tokens,
+        issue=issue,
     )
 
 
@@ -146,7 +145,10 @@ def build_model_from_provider(
 
 
 def render_model_list(models: list[ConfigTUIModel], selected_index: int = 0) -> str:
-    provider_width = max(len("Provider"), *(len(model.provider) for model in models)) if models else len("Provider")
+    def _display_provider(model: ConfigTUIModel) -> str:
+        return f"{model.provider} (default)" if model.is_default else model.provider
+
+    provider_width = max(len("Provider"), *(len(_display_provider(m)) for m in models)) if models else len("Provider")
     model_width = max(len("Model"), *(len(model.model_name) for model in models)) if models else len("Model")
     base_width = max(len("Base URL"), *(len(model.base_url) for model in models)) if models else len("Base URL")
 
@@ -156,7 +158,7 @@ def render_model_list(models: list[ConfigTUIModel], selected_index: int = 0) -> 
         return "\n".join([header, divider, "(no models configured yet)"])
 
     rows = [
-        f"{'>' if index == selected_index else ' '}  {model.provider:<{provider_width}} | "
+        f"{'>' if index == selected_index else ' '}  {_display_provider(model):<{provider_width}} | "
         f"{model.model_name:<{model_width}} | {model.base_url:<{base_width}}"
         for index, model in enumerate(models)
     ]
@@ -193,6 +195,7 @@ def write_config_tui_state(state: ConfigTUIState, config_path: Path | str | None
                 api_key=model.api_key,
                 model_name=model.model_name,
                 base_url=model.base_url or None,
+                is_default=model.is_default,
             )
             for model in state.models
         ],
@@ -393,6 +396,10 @@ def _apply_post_action(
             state.issue = None
             return True
 
+        if state.models[index].is_default:
+            state.issue = "Default model cannot be edited."
+            return False
+
         updated = edit_model(state.models[index])
         if updated is None:
             return False
@@ -411,18 +418,25 @@ def _apply_post_action(
         return True
 
     if action == "delete_model":
+        deletable = [m for m in state.models if not m.is_default]
+        if not deletable:
+            state.issue = "Default model cannot be deleted."
+            return False
+
         try:
-            index = select_model_index(
-                state.models,
+            deletable_index = select_model_index(
+                deletable,
                 title="Delete Model",
                 text="Choose an existing model to delete.",
             )
         except TypeError:
-            index = select_model_index(state.models)
-        if index is None:
+            deletable_index = select_model_index(deletable)
+        if deletable_index is None:
             return False
-        del state.models[index]
-        state.selected_model_index = max(0, min(index, len(state.models) - 1))
+        selected = deletable[deletable_index]
+        original_index = state.models.index(selected)
+        del state.models[original_index]
+        state.selected_model_index = max(0, min(original_index, len(state.models) - 1))
         state.issue = None
         return True
 

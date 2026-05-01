@@ -23,10 +23,12 @@ from .read import ReadTool
 from .social_search import SocialSearchTool
 from .skill import SkillTool
 from .token_holders import TokenHoldersTool
-from .token_data import TokenDataTool
-from .token_market_data import TokenMarketDataTool
+from .token_data import TokenDetailTool, TokenDataTool
+from .token_market_data import TokenPriceTool, TokenMarketDataTool
 from .token_search import TokenSearchTool
 from .token_security import TokenSecurityTool
+from .token_advanced import TokenAdvancedTool
+from .transaction_detail import TransactionDetailTool
 from .todo_write import TodoWriteTool
 from .web_fetch import WebFetchTool
 from .web_search import WebSearchTool
@@ -54,10 +56,12 @@ _TOOL_TYPES = [
     AddressPatternTool,
     AddressTransfersTool,
     TokenHoldersTool,
-    TokenDataTool,
-    TokenMarketDataTool,
+    TokenDetailTool,
+    TokenPriceTool,
     TokenSearchTool,
     TokenSecurityTool,
+    TokenAdvancedTool,
+    TransactionDetailTool,
 ]
 
 _CHAIN_ONLY_TOOL_NAMES = {
@@ -67,11 +71,13 @@ _CHAIN_ONLY_TOOL_NAMES = {
     "address_malicious",
     "address_pattern",
     "address_transfers",
-    "token_data",
+    "token_detail",
     "token_holders",
-    "token_market_data",
+    "token_price",
     "token_search",
     "token_security",
+    "token_advanced",
+    "transaction_detail",
     "write_report",
 }
 
@@ -96,8 +102,6 @@ def create_tool_instances(tool_mode: str = "chain"):
     tool_types = list(_TOOL_TYPES)
     if tool_mode == "code":
         tool_types = list(_CODE_TOOL_TYPES)
-    if not Config.from_file().apis.coingecko_api_key:
-        tool_types = [tool_type for tool_type in tool_types if tool_type not in (TokenDataTool, TokenMarketDataTool)]
     return [tool_type() for tool_type in tool_types]
 
 
@@ -131,11 +135,15 @@ __all__ = [
     "SocialSearchTool",
     "SkillTool",
     "TokenHoldersTool",
+    "TokenDetailTool",
+    "TokenDataTool",
+    "TokenPriceTool",
     "TokenMarketDataTool",
     "TokenSearchTool",
     "TokenSecurityTool",
+    "TokenAdvancedTool",
+    "TransactionDetailTool",
     "TodoWriteTool",
-    "TokenDataTool",
     "WebFetchTool",
     "WebSearchTool",
     "WriteTool",

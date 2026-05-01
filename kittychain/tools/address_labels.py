@@ -1,13 +1,8 @@
-"""Look up Chainbase address labels for one or more EVM addresses."""
+"""Look up address labels via KittyChain API."""
 
-import os
 import sys
-import time
 from pathlib import Path
 from typing import Any
-
-import requests
-from requests import HTTPError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -15,164 +10,11 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from address_identity import parse_addresses  # type: ignore
     from base import Tool  # noqa: F401
-    from config import Config
+    from _kittychain_api import post_kittychain
 else:
     from .address_identity import parse_addresses
     from .base import Tool  # noqa: F401
-    from ..config import Config
-
-CHAINBASE_LABELS_URL = "https://api.chainbase.online/v1/address/labels"
-SUPPORTED_CHAINS = {
-    "Ethereum": 1,
-    "Polygon": 137,
-    "BNB Chain": 56,
-    "Arbitrum": 42161,
-    "Optimism": 10,
-    "Base": 8453,
-}
-RATE_LIMIT_PER_SECOND = 3
-RATE_LIMIT_WINDOW_SECONDS = 1.0
-MIN_REQUEST_INTERVAL_SECONDS = RATE_LIMIT_WINDOW_SECONDS / RATE_LIMIT_PER_SECOND
-
-
-class ChainbaseAPIError(RuntimeError):
-    """Raised when the Chainbase labels API returns an error."""
-
-
-def _load_api_key() -> str:
-    key = Config.from_file().apis.chainbase_api_key
-    if key:
-        return key
-    return os.environ.get("CHAINBASE_API_KEY", "")
-
-
-def resolve_supported_chain_ids(networks: list[str]) -> list[int]:
-    if not networks:
-        raise ValueError("networks is required")
-    chain_ids = []
-    invalid = []
-    for chain_name in networks:
-        chain_id = SUPPORTED_CHAINS.get(chain_name)
-        if chain_id is None:
-            invalid.append(chain_name)
-            continue
-        chain_ids.append(chain_id)
-    if invalid:
-        supported = ", ".join(SUPPORTED_CHAINS)
-        raise ValueError(f"Unsupported networks: {', '.join(invalid)}. Supported chains: {supported}")
-    return chain_ids
-
-
-def _fetch_labels_for_chain(
-    session: Any,
-    api_key: str,
-    address: str,
-    chain_id: int,
-    timeout: int = 20,
-    sleep_func=time.sleep,
-    max_attempts: int = 2,
-) -> dict[str, Any]:
-    last_error = None
-    for attempt in range(1, max_attempts + 1):
-        response = session.get(
-            CHAINBASE_LABELS_URL,
-            headers={"x-api-key": api_key},
-            params={"chain_id": chain_id, "address": address},
-            timeout=timeout,
-        )
-        try:
-            response.raise_for_status()
-        except HTTPError as exc:
-            last_error = exc
-            status_code = getattr(getattr(exc, "response", None), "status_code", None)
-            if status_code == 429 and attempt < max_attempts:
-                retry_after = getattr(exc.response, "headers", {}).get("Retry-After", "1")
-                try:
-                    sleep_seconds = float(retry_after)
-                except (TypeError, ValueError):
-                    sleep_seconds = 1.0
-                sleep_func(max(sleep_seconds, 1.0))
-                continue
-            raise
-        payload = response.json()
-        if payload.get("code") not in (None, 0):
-            raise ChainbaseAPIError(payload.get("message") or "Chainbase labels lookup failed")
-        return payload
-    raise ChainbaseAPIError("Chainbase labels lookup failed") from last_error
-
-
-def summarize_label_results(
-    addresses: str | list[str] | tuple[str, ...],
-    payloads: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    normalized_addresses = parse_addresses(addresses)
-    collected: dict[str, dict[tuple[str, tuple[str, ...]], dict[str, Any]]] = {
-        address: {} for address in normalized_addresses
-    }
-
-    for payload in payloads:
-        data = payload.get("data") or {}
-        if not isinstance(data, dict):
-            continue
-        for address, labels in data.items():
-            if address not in collected or not isinstance(labels, list):
-                continue
-            for label in labels:
-                if not isinstance(label, dict):
-                    continue
-                category = str(label.get("category") or "").strip()
-                tags = [str(tag) for tag in label.get("tags") or [] if str(tag).strip()]
-                if not category:
-                    continue
-                dedupe_key = (category, tuple(tags))
-                collected[address][dedupe_key] = {"category": category, "tags": tags}
-
-    summaries = []
-    for address in normalized_addresses:
-        labels = sorted(
-            collected[address].values(),
-            key=lambda item: (item["category"], item["tags"]),
-        )
-        summaries.append({"address": address, "labels": labels})
-    return summaries
-
-
-def fetch_address_labels(
-    addresses: str | list[str] | tuple[str, ...],
-    api_key: str,
-    networks: list[str],
-    session: Any | None = None,
-    timeout: int = 20,
-    time_func=time.time,
-    sleep_func=time.sleep,
-) -> dict[str, Any] | list[dict[str, Any]]:
-    normalized_addresses = parse_addresses(addresses)
-    chain_ids = resolve_supported_chain_ids(networks)
-    session = session or requests.Session()
-    payloads = []
-    last_request_started_at: float | None = None
-    for address in normalized_addresses:
-        for chain_id in chain_ids:
-            if last_request_started_at is not None:
-                now = time_func()
-                sleep_seconds = MIN_REQUEST_INTERVAL_SECONDS - (now - last_request_started_at)
-                if sleep_seconds > 0:
-                    sleep_func(sleep_seconds)
-            last_request_started_at = time_func()
-            payloads.append(
-                _fetch_labels_for_chain(
-                    session,
-                    api_key,
-                    address,
-                    chain_id,
-                    timeout=timeout,
-                    sleep_func=sleep_func,
-                )
-            )
-    summaries = summarize_label_results(normalized_addresses, payloads)
-    if len(summaries) == 1:
-        return summaries[0]
-    return summaries
+    from ._kittychain_api import post_kittychain
 
 
 def render_text(summary: dict[str, Any] | list[dict[str, Any]]) -> str:
@@ -189,12 +31,32 @@ def render_text(summary: dict[str, Any] | list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _map_items(data: dict[str, Any], addresses: list[str]) -> list[dict[str, Any]]:
+    items_raw = data.get("items") or []
+    by_address: dict[str, list[dict[str, Any]]] = {}
+    for item in items_raw:
+        addr = str(item.get("address") or "").lower()
+        labels = []
+        for label in item.get("labels") or []:
+            labels.append({
+                "category": str(label.get("category") or ""),
+                "tags": [str(t) for t in (label.get("tags") or [])],
+            })
+        by_address[addr] = labels
+
+    results = []
+    for addr in addresses:
+        labels = sorted(by_address.get(addr.lower(), []), key=lambda x: (x["category"], x["tags"]))
+        results.append({"address": addr, "labels": labels})
+    return results
+
+
 class AddressLabelsTool(Tool):
     name = "address_labels"
     description = """
-Look up Chainbase address labels for one or more EVM addresses.
+Look up address labels for one or more EVM addresses via KittyChain API.
 Before calling this tool, call address_pattern first to determine candidate chain names.
-Pass those candidate chain names through the required networks field.
+Pass those candidate chain names through the required chains field.
 Returns label category and tags aggregated across the selected supported chains.
     """
     parameters = {
@@ -204,44 +66,42 @@ Returns label category and tags aggregated across the selected supported chains.
                 "type": "string",
                 "description": "One or more EVM addresses, separated by commas or whitespace.",
             },
-            "networks": {
+            "chains": {
                 "type": "array",
-                "items": {"type": "string", "enum": list(SUPPORTED_CHAINS)},
-                "description": "Required candidate chain names. Supported values: " + ", ".join(SUPPORTED_CHAINS),
+                "items": {"type": "string"},
+                "description": "Required candidate chain names. Supported values: Ethereum, Polygon, BNB Chain, Arbitrum, Optimism, Base, and more.",
             },
         },
-        "required": ["address", "networks"],
+        "required": ["address", "chains"],
     }
 
     _parent_agent = None
 
-    def execute(self, address: str, networks: list[str]) -> str:
+    def execute(self, address: str, chains: list[str]) -> str:
         if not address:
             raise ValueError("address is required")
-        api_key = _load_api_key()
-        if not api_key:
-            raise ValueError("CHAINBASE_API_KEY is required")
-        summary = fetch_address_labels(address, api_key, networks)
-        return render_text(summary)
+        if not chains:
+            raise ValueError("chains is required")
+        normalized = parse_addresses(address)
+        data = post_kittychain("/api/address/labels", {"address": address, "chains": chains})
+        print("Raw API response:", data)
+        summaries = _map_items(data, normalized)
+        if len(summaries) == 1:
+            return render_text(summaries[0])
+        return render_text(summaries)
 
 
-def main(address: str, networks: list[str]) -> int:
+def main(address: str, chains: list[str]) -> int:
     if not address:
         print("Error: address is required")
         return 1
-    api_key = _load_api_key()
-    if not api_key:
-        print("Error: CHAINBASE_API_KEY is required")
+    if not chains:
+        print("Error: chains is required")
         return 1
-    try:
-        summary = fetch_address_labels(address, api_key, networks)
-    except ValueError as exc:
-        print(f"Error: {exc}")
-        return 1
-    print(render_text(summary))
+    tool = AddressLabelsTool()
+    print(tool.execute(address, chains))
     return 0
 
 
 if __name__ == "__main__":
-    address = ["0x28c6c06298d514db089934071355e5743bf21d60", "0x28c71c57f806fb674d9fa9d1fd47056b8d3da8bb"]
-    raise SystemExit(main(address, ["Ethereum", "Base", "BNB Chain"]))
+    raise SystemExit(main("0x28c6c06298d514db089934071355e5743bf21d60", ["Ethereum", "Base"]))

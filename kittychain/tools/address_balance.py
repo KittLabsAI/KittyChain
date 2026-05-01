@@ -1,165 +1,40 @@
-"""Compute token balances and USD totals for an address across supported Alchemy networks."""
+"""Compute token balances and USD totals for an address across supported chains."""
 
-import argparse
-import json
-import os
-import ssl
 import sys
-from collections import defaultdict
-from decimal import Decimal, getcontext
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
-
-import certifi
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # noqa: F401
-    from config import Config
+    from _kittychain_api import post_kittychain
 else:
     from .base import Tool  # noqa: F401
-    from ..config import Config
-
-DATA_API_BASE = "https://api.g.alchemy.com/data/v1"
-getcontext().prec = 50
-SUPPORTED_CHAINS = {
-    "Ethereum": "eth-mainnet",
-    "Solana": "solana-mainnet",
-    "Arbitrum": "arb-mainnet",
-    "Base": "base-mainnet",
-    "Avalanche C-Chain": "avax-mainnet",
-    "BNB Chain": "bnb-mainnet",
-    "Blast": "blast-mainnet",
-    "zkSync Era": "zksync-mainnet",
-    "Polygon": "polygon-mainnet",
-}
+    from ._kittychain_api import post_kittychain
 
 
-class AlchemyAPIError(RuntimeError):
-    pass
+def summarize_tokens_kittychain(payload: dict[str, Any]) -> dict[str, Any]:
+    tokens_raw = payload.get("tokens") or []
+    tokens: list[dict[str, Any]] = []
+    for item in tokens_raw:
+        tokens.append({
+            "symbol": str(item.get("symbol") or "UNKNOWN"),
+            "token_address": item.get("tokenAddress"),
+            "quantity": float(item.get("quantity") or 0),
+            "value_usd": float(item.get("valueUsd") or 0),
+        })
+    tokens.sort(key=lambda t: t["value_usd"], reverse=True)
+
+    network_totals_raw = payload.get("networkTotals") or {}
+    network_totals = {k: float(v) for k, v in network_totals_raw.items()}
+
+    total_value_usd = float(payload.get("totalValueUsd") or 0)
+    return {"tokens": tokens, "network_totals": network_totals, "total_value_usd": total_value_usd}
 
 
-def _load_api_key() -> str:
-    key = Config.from_file().apis.alchemy_api_key
-    if key:
-        return key
-    return os.environ.get("ALCHEMY_API_KEY", "")
-
-
-def _build_ssl_context() -> ssl.SSLContext:
-    return ssl.create_default_context(cafile=certifi.where())
-
-
-def resolve_supported_networks(networks: list[str]) -> list[str]:
-    if not networks:
-        raise ValueError("networks is required")
-    resolved = []
-    invalid = []
-    for chain_name in networks:
-        network = SUPPORTED_CHAINS.get(chain_name)
-        if network is None:
-            invalid.append(chain_name)
-            continue
-        resolved.append(network)
-    if invalid:
-        supported = ", ".join(SUPPORTED_CHAINS)
-        raise ValueError(f"Unsupported networks: {', '.join(invalid)}. Supported chains: {supported}")
-    return resolved
-
-
-def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
-    data = json.dumps(payload).encode("utf-8")
-    request = Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
-    try:
-        with urlopen(request, context=_build_ssl_context()) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise AlchemyAPIError(f"HTTP {exc.code} calling {url}: {body}") from exc
-    except URLError as exc:
-        raise AlchemyAPIError(f"Network error calling {url}: {exc.reason}") from exc
-
-
-def get_tokens_by_wallet(
-    api_key: str,
-    address: str,
-    networks: list[str],
-    with_metadata: bool = True,
-    with_prices: bool = True,
-    include_native_tokens: bool = True,
-    include_erc20_tokens: bool = True,
-) -> dict[str, Any]:
-    url = f"{DATA_API_BASE}/{api_key}/assets/tokens/by-address"
-    payload = {
-        "addresses": [{"address": address, "networks": networks}],
-        "withMetadata": with_metadata,
-        "withPrices": with_prices,
-        "includeNativeTokens": include_native_tokens,
-        "includeErc20Tokens": include_erc20_tokens,
-    }
-    return _post_json(url, payload)
-
-
-def summarize_tokens(payload: dict[str, Any]) -> dict[str, Any]:
-    tokens = payload.get("data", {}).get("tokens", [])
-    grouped: dict[str, dict[str, Decimal | str | None]] = defaultdict(
-        lambda: {"symbol": "", "token_address": None, "quantity": Decimal("0"), "value_usd": Decimal("0")}
-    )
-    network_totals: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
-    for token in tokens:
-        metadata = token.get("tokenMetadata") or {}
-        network = token.get("network") or "unknown-network"
-        token_address = token.get("tokenAddress")
-        symbol = metadata.get("symbol")
-        decimals = metadata.get("decimals")
-        if decimals is None:
-            decimals = 18
-        display_symbol = symbol or f"UNKNOWN@{network}"
-        group_key = symbol or f"{network}:{token_address or 'native'}"
-        price_items = token.get("tokenPrices") or []
-        if not price_items:
-            continue
-        price_value = price_items[0].get("value")
-        if price_value is None:
-            continue
-        raw_balance = token.get("tokenBalance") or "0x0"
-        quantity = Decimal(int(raw_balance, 16)) / (Decimal(10) ** int(decimals))
-        value_usd = quantity * Decimal(str(price_value))
-        entry = grouped[group_key]
-        entry["symbol"] = display_symbol
-        existing_token_address = entry["token_address"]
-        if existing_token_address is None:
-            entry["token_address"] = token_address
-        elif token_address != existing_token_address:
-            entry["token_address"] = None
-        entry["quantity"] = Decimal(entry["quantity"]) + quantity
-        entry["value_usd"] = Decimal(entry["value_usd"]) + value_usd
-        network_totals[network] += value_usd
-    summarized_tokens = sorted(
-        (
-            {
-                "symbol": entry["symbol"],
-                "token_address": entry["token_address"],
-                "quantity": float(entry["quantity"]),
-                "value_usd": float(entry["value_usd"]),
-            }
-            for entry in grouped.values()
-            if Decimal(entry["quantity"]) != 0 and Decimal(entry["value_usd"]) != 0
-        ),
-        key=lambda item: item["value_usd"],
-        reverse=True,
-    )
-    total_value_usd = round(sum(item["value_usd"] for item in summarized_tokens), 8)
-    summarized_networks = {
-        network: round(float(value), 8)
-        for network, value in sorted(network_totals.items(), key=lambda item: item[1], reverse=True)
-        if value != 0
-    }
-    return {"tokens": summarized_tokens, "network_totals": summarized_networks, "total_value_usd": total_value_usd}
+summarize_tokens = summarize_tokens_kittychain
 
 
 def render_balance_text(summary: dict[str, Any]) -> str:
@@ -187,9 +62,9 @@ def render_balance_text(summary: dict[str, Any]) -> str:
 class AddressBalanceTool(Tool):
     name = "address_balance"
     description = """
-Compute token balances and USD totals for an address across supported Alchemy networks.
+Compute token balances and USD totals for an address across supported chains.
 Before calling this tool, call address_pattern first to determine candidate chain names.
-Pass those candidate chain names through the required networks field.
+Pass those candidate chain names through the required chains field.
     """
     parameters = {
         "type": "object",
@@ -198,48 +73,39 @@ Pass those candidate chain names through the required networks field.
                 "type": "string",
                 "description": "The wallet address to inspect.",
             },
-            "networks": {
+            "chains": {
                 "type": "array",
-                "items": {"type": "string", "enum": list(SUPPORTED_CHAINS)},
-                "description": "Required candidate chain names. Supported values: " + ", ".join(SUPPORTED_CHAINS),
+                "items": {"type": "string"},
+                "description": "Required candidate chain names. Supported values: Ethereum, Solana, Arbitrum, Base, Avalanche C-Chain, BNB Chain, Blast, zkSync Era, Polygon, and more.",
             },
         },
-        "required": ["address", "networks"],
+        "required": ["address", "chains"],
     }
 
     _parent_agent = None
 
-    def execute(self, address: str, networks: list[str]) -> str:
+    def execute(self, address: str, chains: list[str]) -> str:
         if not address:
             raise ValueError("address is required")
-        resolved_networks = resolve_supported_networks(networks)
-        api_key = _load_api_key()
-        if not api_key:
-            raise ValueError("ALCHEMY_API_KEY is required")
-        payload = get_tokens_by_wallet(api_key=api_key, address=address, networks=resolved_networks)
-        summary = summarize_tokens(payload)
+        if not chains:
+            raise ValueError("chains is required")
+        data = post_kittychain("/api/address/balance", {"address": address, "chains": chains})
+        summary = summarize_tokens_kittychain(data)
         return render_balance_text(summary)
 
 
-def main(address: str, networks: list[str]) -> int:
+def main(address: str, chains: list[str]) -> int:
     if not address:
         print("Error: address is required")
         return 1
-    try:
-        resolved_networks = resolve_supported_networks(networks)
-    except ValueError as exc:
-        print(f"Error: {exc}")
+    if not chains:
+        print("Error: chains is required")
         return 1
-    api_key = _load_api_key()
-    if not api_key:
-        print("Error: ALCHEMY_API_KEY is required")
-        return 1
-    payload = get_tokens_by_wallet(api_key=api_key, address=address, networks=resolved_networks)
-    summary = summarize_tokens(payload)
+    data = post_kittychain("/api/address/balance", {"address": address, "chains": chains})
+    summary = summarize_tokens_kittychain(data)
     print(render_balance_text(summary))
     return 0
 
 
 if __name__ == "__main__":
-    address = "0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB"
-    raise SystemExit(main(address, ["Ethereum", "Base", "BNB Chain"]))
+    raise SystemExit(main("0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB", ["Ethereum", "Base"]))

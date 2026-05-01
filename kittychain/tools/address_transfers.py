@@ -1,167 +1,18 @@
-"""Aggregate counterparties and transferred asset values across supported Alchemy networks."""
+"""Get token transfer totals by address via KittyChain API."""
 
-import argparse
-import json
-import os
-import ssl
 import sys
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
-
-import certifi
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(PROJECT_ROOT))
     from base import Tool  # noqa: F401
-    from config import Config
+    from _kittychain_api import post_kittychain
 else:
     from .base import Tool  # noqa: F401
-    from ..config import Config
-
-RPC_API_TEMPLATE = "https://{network}.g.alchemy.com/v2/{api_key}"
-SUPPORTED_CHAINS = {
-    "Ethereum": "eth-mainnet",
-    "Arbitrum": "arb-mainnet",
-    "Base": "base-mainnet",
-    "Avalanche C-Chain": "avax-mainnet",
-    "BNB Chain": "bnb-mainnet",
-    "Blast": "blast-mainnet",
-    "zkSync Era": "zksync-mainnet",
-    "Polygon": "polygon-mainnet",
-}
-
-
-class AlchemyAPIError(RuntimeError):
-    pass
-
-
-def _load_api_key() -> str:
-    key = Config.from_file().apis.alchemy_api_key
-    if key:
-        return key
-    return os.environ.get("ALCHEMY_API_KEY", "")
-
-
-def _build_ssl_context() -> ssl.SSLContext:
-    return ssl.create_default_context(cafile=certifi.where())
-
-
-def resolve_supported_networks(networks: list[str]) -> list[str]:
-    if not networks:
-        raise ValueError("networks is required")
-    resolved = []
-    invalid = []
-    for chain_name in networks:
-        network = SUPPORTED_CHAINS.get(chain_name)
-        if network is None:
-            invalid.append(chain_name)
-            continue
-        resolved.append(network)
-    if invalid:
-        supported = ", ".join(SUPPORTED_CHAINS)
-        raise ValueError(f"Unsupported networks: {', '.join(invalid)}. Supported chains: {supported}")
-    return resolved
-
-
-def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
-    data = json.dumps(payload).encode("utf-8")
-    request = Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
-    try:
-        with urlopen(request, context=_build_ssl_context()) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise AlchemyAPIError(f"HTTP {exc.code} calling {url}: {body}") from exc
-    except URLError as exc:
-        raise AlchemyAPIError(f"Network error calling {url}: {exc.reason}") from exc
-
-
-def get_asset_transfers(
-    api_key: str,
-    network: str,
-    from_address: str | None = None,
-    to_address: str | None = None,
-    from_block: str = "0x0",
-    to_block: str = "latest",
-    category: list[str] | None = None,
-    exclude_zero_value: bool = False,
-    with_metadata: bool = True,
-    max_count: str | None = None,
-    page_key: str | None = None,
-) -> dict[str, Any]:
-    url = RPC_API_TEMPLATE.format(network=network, api_key=api_key)
-    transfer_params: dict[str, Any] = {
-        "fromBlock": from_block,
-        "toBlock": to_block,
-        "excludeZeroValue": exclude_zero_value,
-        "withMetadata": with_metadata,
-        "category": category or ["erc20"],
-    }
-    if from_address:
-        transfer_params["fromAddress"] = from_address
-    if to_address:
-        transfer_params["toAddress"] = to_address
-    if max_count:
-        transfer_params["maxCount"] = max_count
-    if page_key:
-        transfer_params["pageKey"] = page_key
-    payload = {"jsonrpc": "2.0", "id": 1, "method": "alchemy_getAssetTransfers", "params": [transfer_params]}
-    return _post_json(url, payload)
-
-
-def fetch_all_transfers(address: str, api_key: str, networks: list[str]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-    responses: list[dict[str, Any]] = []
-    skipped_networks: list[dict[str, str]] = []
-    for network in networks:
-        try:
-            responses.append({"network": network, "direction": "from", "payload": get_asset_transfers(api_key=api_key, network=network, from_address=address)})
-            responses.append({"network": network, "direction": "to", "payload": get_asset_transfers(api_key=api_key, network=network, to_address=address)})
-        except Exception as exc:
-            skipped_networks.append({"network": network, "reason": str(exc)})
-    return responses, skipped_networks
-
-
-def summarize_transfers(address: str, responses: list[dict[str, Any]]) -> dict[str, Any]:
-    normalized_address = address.lower()
-    grouped: dict[tuple[str, str, str, str], dict[str, Any]] = {}
-    for response in responses:
-        network = response["network"]
-        direction = response["direction"]
-        transfers = response.get("payload", {}).get("result", {}).get("transfers", [])
-        for transfer in transfers:
-            asset = transfer.get("asset") or "UNKNOWN"
-            from_address = (transfer.get("from") or "").lower()
-            to_address = (transfer.get("to") or "").lower()
-            counterparty = to_address if direction == "from" else from_address
-            if not counterparty:
-                continue
-            timestamp = (transfer.get("metadata") or {}).get("blockTimestamp")
-            value = transfer.get("value") or 0
-            key = (network, direction, counterparty, asset)
-            if key not in grouped:
-                grouped[key] = {
-                    "network": network,
-                    "direction": direction,
-                    "counterparty": counterparty,
-                    "asset": asset,
-                    "total_value": 0.0,
-                    "first_timestamp": timestamp,
-                    "last_timestamp": timestamp,
-                }
-            grouped[key]["total_value"] += float(value)
-            if timestamp:
-                if grouped[key]["first_timestamp"] is None or timestamp < grouped[key]["first_timestamp"]:
-                    grouped[key]["first_timestamp"] = timestamp
-                if grouped[key]["last_timestamp"] is None or timestamp > grouped[key]["last_timestamp"]:
-                    grouped[key]["last_timestamp"] = timestamp
-    items = sorted(grouped.values(), key=lambda item: (item["network"], item["direction"], -item["total_value"], item["counterparty"], item["asset"]))
-    for item in items:
-        item["total_value"] = round(item["total_value"], 8)
-    return {"address": normalized_address, "items": items, "skipped_networks": []}
+    from ._kittychain_api import post_kittychain
 
 
 def render_transfers_text(summary: dict[str, Any]) -> str:
@@ -183,12 +34,39 @@ def render_transfers_text(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _map_response(data: dict[str, Any]) -> dict[str, Any]:
+    items_raw = data.get("items") or []
+    items = []
+    for item in items_raw:
+        items.append({
+            "network": item.get("network"),
+            "direction": item.get("direction"),
+            "counterparty": item.get("counterparty"),
+            "asset": item.get("asset"),
+            "total_value": float(item.get("totalValue") or 0),
+            "first_timestamp": item.get("firstTimestamp"),
+            "last_timestamp": item.get("lastTimestamp"),
+        })
+
+    skipped_raw = data.get("skippedNetworks") or []
+    skipped = []
+    for item in skipped_raw:
+        if isinstance(item, dict):
+            skipped.append({"network": item.get("network"), "reason": item.get("reason")})
+
+    return {
+        "address": data.get("address", ""),
+        "items": items,
+        "skipped_networks": skipped,
+    }
+
+
 class AddressTransfersTool(Tool):
     name = "address_transfers"
     description = """
-Aggregate counterparties and transferred asset values across supported Alchemy networks.
+Get token transfer totals by address via KittyChain API.
 Before calling this tool, call address_pattern first to determine candidate chain names.
-Pass those candidate chain names through the required networks field.
+Pass those candidate chain names through the required chains field.
 Returns aggregated transfer data grouped by network, direction, counterparty, and asset.
 # Important Notes
 - After calling this tool, inspect the 3-5 most frequent counterparties and check each one with address_malicious.
@@ -200,50 +78,38 @@ Returns aggregated transfer data grouped by network, direction, counterparty, an
                 "type": "string",
                 "description": "The wallet address to inspect.",
             },
-            "networks": {
+            "chains": {
                 "type": "array",
-                "items": {"type": "string", "enum": list(SUPPORTED_CHAINS)},
-                "description": "Required candidate chain names. Supported values: " + ", ".join(SUPPORTED_CHAINS),
+                "items": {"type": "string"},
+                "description": "Required candidate chain names. Supported values: Ethereum, Arbitrum, Base, Avalanche C-Chain, BNB Chain, Blast, zkSync Era, Polygon, and more.",
             },
         },
-        "required": ["address", "networks"],
+        "required": ["address", "chains"],
     }
 
     _parent_agent = None
 
-    def execute(self, address: str, networks: list[str]) -> str:
+    def execute(self, address: str, chains: list[str]) -> str:
         if not address:
             raise ValueError("address is required")
-        resolved_networks = resolve_supported_networks(networks)
-        api_key = _load_api_key()
-        if not api_key:
-            raise ValueError("ALCHEMY_API_KEY is required")
-        responses, skipped_networks = fetch_all_transfers(address, api_key, resolved_networks)
-        summary = summarize_transfers(address, responses)
-        summary["skipped_networks"] = skipped_networks
+        if not chains:
+            raise ValueError("chains is required")
+        data = post_kittychain("/api/address/transfers", {"address": address, "chains": chains})
+        summary = _map_response(data)
         return render_transfers_text(summary)
 
 
-def main(address: str, networks: list[str]) -> int:
+def main(address: str, chains: list[str]) -> int:
     if not address:
         print("Error: address is required")
         return 1
-    try:
-        resolved_networks = resolve_supported_networks(networks)
-    except ValueError as exc:
-        print(f"Error: {exc}")
+    if not chains:
+        print("Error: chains is required")
         return 1
-    api_key = _load_api_key()
-    if not api_key:
-        print("Error: ALCHEMY_API_KEY is required")
-        return 1
-    responses, skipped_networks = fetch_all_transfers(address, api_key, resolved_networks)
-    summary = summarize_transfers(address, responses)
-    summary["skipped_networks"] = skipped_networks
-    print(render_transfers_text(summary))
+    tool = AddressTransfersTool()
+    print(tool.execute(address, chains))
     return 0
 
 
 if __name__ == "__main__":
-    address = "0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB"
-    raise SystemExit(main(address, ["Base"]))
+    raise SystemExit(main("0x28c71c57F806Fb674d9FA9D1fd47056b8D3Da8bB", ["Base"]))

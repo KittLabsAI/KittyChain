@@ -11,7 +11,7 @@ if __package__ in (None, ""):
 from demo.okx_client import request as okx_request
 
 SAMPLE_CHAIN_INDEX = "1"
-SAMPLE_TOKEN_ADDRESS = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+SAMPLE_TOKEN_ADDRESS = "0x382bb369d343125bfb2117af9c149795c6c65c50"
 
 
 def search_tokens(chains: str = "1", search: str = "weth", cursor: str | None = None, limit: str | None = None) -> Any:
@@ -159,16 +159,16 @@ def _print_result(name: str, payload: Any) -> None:
 
 def _run_all() -> None:
     calls = [
-        ("search_tokens", search_tokens),
+        # ("search_tokens", search_tokens),
         ("get_token_basic_info", get_token_basic_info),
-        ("get_token_top_liquidity", get_token_top_liquidity),
-        ("get_token_price_info", get_token_price_info),
-        ("get_token_advanced_info", get_token_advanced_info),
-        ("get_token_trades", get_token_trades),
-        ("get_hot_tokens", get_hot_tokens),
-        ("get_token_holders", get_token_holders),
-        ("get_token_cluster_top_holders", get_token_cluster_top_holders),
-        ("get_token_top_traders", get_token_top_traders),
+        # ("get_token_top_liquidity", get_token_top_liquidity),
+        # ("get_token_price_info", get_token_price_info),
+        # ("get_token_advanced_info", get_token_advanced_info),
+        # ("get_token_trades", get_token_trades),
+        # ("get_hot_tokens", get_hot_tokens),
+        # ("get_token_holders", get_token_holders),
+        # ("get_token_cluster_top_holders", get_token_cluster_top_holders),
+        # ("get_token_top_traders", get_token_top_traders),
     ]
     for name, func in calls:
         _print_result(name, func())

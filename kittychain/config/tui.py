@@ -151,7 +151,7 @@ def render_model_list(models: list[ConfigTUIModel], selected_index: int = 0) -> 
     def _display_provider(model: ConfigTUIModel) -> str:
         return f"{model.provider} (default)" if model.is_default else model.provider
 
-    provider_width = max(len("Provider"), *(_display_provider(m).__len__() for m in models)) if models else len("Provider")
+    provider_width = max(len("Provider"), *(len(_display_provider(m)) for m in models)) if models else len("Provider")
     model_width = max(len("Model"), *(len(model.model_name) for model in models)) if models else len("Model")
     base_width = max(len("Base URL"), *(len(model.base_url) for model in models)) if models else len("Base URL")
 
@@ -399,6 +399,7 @@ def _apply_post_action(
             return True
 
         if state.models[index].is_default:
+            state.issue = "Default model cannot be edited."
             return False
 
         updated = edit_model(state.models[index])

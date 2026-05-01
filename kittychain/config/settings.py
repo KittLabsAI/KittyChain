@@ -108,13 +108,16 @@ class Config:
 
     def to_payload(self) -> dict:
         active_index = self.active_model_index()
-        ordered_models = list(self.models)
+        ordered_models = [
+            m for m in self.models if not m.is_default
+        ]
         if active_index is not None:
-            ordered_models = [
-                ordered_models[active_index],
-                *ordered_models[:active_index],
-                *ordered_models[active_index + 1 :],
-            ]
+            active = self.models[active_index]
+            if not active.is_default:
+                ordered_models = [
+                    active,
+                    *[m for m in ordered_models if m is not active],
+                ]
 
         return {
             "models": [

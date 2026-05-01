@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -185,3 +186,41 @@ def test_config_default_model_uses_kittychain_api_key(tmp_path: Path):
 
     assert loaded.models[0].api_key == "my-kitty-key"
     assert loaded.api_key == "my-kitty-key"
+
+
+def test_config_to_payload_excludes_default_model(tmp_path: Path):
+    path = tmp_path / "config.json"
+    Config(
+        interface="openai",
+        model="gpt-4.1",
+        api_key="model-key",
+        models=[
+            StoredModelConfig(
+                interface="openai",
+                provider="OpenRouter",
+                api_key="model-key",
+                model_name="gpt-4.1",
+                base_url="https://openrouter.ai/api/v1",
+            )
+        ],
+        apis=ApiConfig(kittychain_api_key="kitty-key"),
+    ).write(path)
+
+    loaded = Config.from_file(path)
+    payload = loaded.to_payload()
+
+    assert len(payload["models"]) == 1
+    assert payload["models"][0]["provider"] == "OpenRouter"
+
+
+def test_config_round_trip_with_default_model(tmp_path: Path):
+    path = tmp_path / "config.json"
+    Config(
+        apis=ApiConfig(kittychain_api_key="kitty-key"),
+    ).write(path)
+
+    loaded = Config.from_file(path)
+    loaded.write(path)
+
+    raw = json.loads(path.read_text())
+    assert raw["models"] == []

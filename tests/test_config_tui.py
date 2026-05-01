@@ -44,7 +44,9 @@ def test_load_config_tui_state_reads_model_and_api_sections(tmp_path: Path):
 
     state = load_config_tui_state(path)
 
-    assert len(state.models) == 1
+    assert len(state.models) == 2
+    assert state.models[0].is_default is True
+    assert state.models[1].provider == "OpenRouter"
     assert state.apis.kittychain_api_key == "kitty-key"
 
 

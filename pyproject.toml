@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kittychain"
-version = "1.0.0"
+version = "1.0.1"
 description = "Terminal agent for onchain analysis"
 readme = "README.md"
 license = "MIT"
@@ -17,9 +17,6 @@ dependencies = [
     "anthropic>=0.84.0",
     "beautifulsoup4>=4.12",
     "certifi>=2024.0.0",
-    "Flask>=3.1",
-    "dune-client>=1.10.0",
-    "goplus>=0.2.5",
     "openai>=1.0",
     "pyvis>=0.3.2",
     "prompt_toolkit>=3.0",
